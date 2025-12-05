@@ -25,6 +25,20 @@ def get_drive_service():
     creds = service_account.Credentials.from_service_account_file(KEY_FILE, scopes=SCOPES)
     return build('drive', 'v3', credentials=creds)
 
+def download_file_as_bytes(service, file_id):
+    """Descarga un archivo cualquiera de Drive y devuelve sus bytes."""
+    print(f"⬇️ Descargando archivo ID: {file_id}...")
+    request = service.files().get_media(fileId=file_id)
+    fh = io.BytesIO()
+    downloader = MediaIoBaseDownload(fh, request)
+    done = False
+    while done is False:
+        status, done = downloader.next_chunk()
+    fh.seek(0)
+    return fh.read()
+
+
+
 def download_parquet_as_df(service, file_name, folder_id):
     """Busca y descarga un parquet de Drive a un DataFrame."""
     print(f"⬇️ Buscando '{file_name}' en Drive...")
