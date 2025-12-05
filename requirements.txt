@@ -1,0 +1,15 @@
+functions-framework==3.*
+google-cloud-storage
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+pandas
+openpyxl
+pyarrow
+fsspec
+gcsfs
+geopandas
+shapely
+rtree
+rapidfuzz
+unidecode
