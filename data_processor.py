@@ -18,7 +18,7 @@ from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
 # ==========================================
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
-KEY_FILE = 'src/credentials.json'
+KEY_FILE = 'credentials.json'
 
 def get_drive_service():
     """Autentica y devuelve el servicio de Drive."""
