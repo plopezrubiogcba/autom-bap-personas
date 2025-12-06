@@ -305,3 +305,6 @@ def procesar_datos(excel_content_bytes, folder_id):
     upload_df_as_parquet(service, df_actualizado, nombre_limpio, folder_id)
     
     print(f"🎉 Proceso Terminado. Limpio actualizado al día {df_actualizado[col_fecha].max()}")
+
+# ¡ESTA LÍNEA ES LA CLAVE!
+    return df_actualizado
