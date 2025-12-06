@@ -3,9 +3,12 @@ import json
 import traceback
 from data_processor import procesar_datos, download_file_as_bytes, get_drive_service
 
-# ID de la carpeta donde se guardarán/leerán los parquets
-FOLDER_ID_OUTPUT = '1JerMocOXjC1pL6PFllj5COzDKm9qr6_W'
+# --- CONFIGURACIÓN DE CARPETAS ---
+# Carpeta 02: Donde viven los parquets
+FOLDER_ID_DB = '1q7rGJjb3qCTNcyDUYzpn9v4JveLjsk6t' 
 
+# Carpeta 03: Donde guardaremos el output para Looker
+FOLDER_ID_LOOKER = '1CIvUwsJ4dTLfiG0t_DI5XTrtcFWgKv2b'
 
 @functions_framework.http
 def entry_point(request):
