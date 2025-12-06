@@ -13,3 +13,4 @@ shapely
 rtree
 rapidfuzz
 unidecode
+gspread
