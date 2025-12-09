@@ -21,7 +21,7 @@ def get_gspread_client():
     return gspread.authorize(creds)
 
 def update_sheet(gc, sheet_id, worksheet_name, df):
-    """Escribe un DataFrame en una hoja de Google Sheets, creándola si no existe."""
+    """Escribe un DataFrame en una hoja de Google Sheets, manejando errores de nulos."""
     try:
         sh = gc.open_by_key(sheet_id)
         try:
@@ -30,19 +30,25 @@ def update_sheet(gc, sheet_id, worksheet_name, df):
         except gspread.WorksheetNotFound:
             ws = sh.add_worksheet(title=worksheet_name, rows=100, cols=20)
         
-        # Convertir fechas a string para evitar errores de JSON
+        # --- LIMPIEZA CRÍTICA PARA GSPREAD ---
+        # 1. Convertir todo a string para evitar problemas de tipos JSON
         df_str = df.astype(str)
-        # Reemplazar 'nan' y 'NaT' por vacíos
-        df_str = df_str.replace({'nan': '', 'NaT': '', '<NA>': ''})
         
-        # Preparar datos con cabecera
+        # 2. Reemplazar valores nulos de Pandas que rompen la API
+        # Reemplazamos 'nan', 'NaT', 'None' y '<NA>' por un string vacío ""
+        df_str = df_str.replace({'nan': '', 'NaT': '', 'None': '', '<NA>': '', 'Na': ''})
+        
+        # 3. Preparar la lista de listas
         data = [df_str.columns.values.tolist()] + df_str.values.tolist()
+        
+        # 4. Enviar
         ws.update(range_name='A1', values=data)
         print(f"📊 Hoja '{worksheet_name}' actualizada ({len(df)} filas).")
+        
     except Exception as e:
-        print(f"❌ Error actualizando hoja '{worksheet_name}': {str(e)}")
+        # Imprimimos el tipo de error para tener más detalle si vuelve a fallar
+        print(f"❌ Error actualizando hoja '{worksheet_name}': {type(e).__name__} - {str(e)}")
 
-# --- LÓGICA DE NEGOCIO (Tus funciones de los Notebooks) ---
 
 def generar_reporte_comuna2_metricas(df_base):
     """Replica la lógica de interevenciones_comuna2.ipynb"""
