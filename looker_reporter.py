@@ -2,11 +2,10 @@ import pandas as pd
 import numpy as np
 import gspread
 from google.oauth2 import service_account
-from datetime import datetime, timedelta
+from datetime import datetime
 
 # Configuración
 KEY_FILE = 'credentials.json'
-# ID de tu Google Sheet Maestro
 SHEET_ID_LOOKER = '1EsLO-upDBrHupXnKYvfLvQWIRaiH0kdEVToreAGmuOg' 
 
 def get_gspread_client():
@@ -25,7 +24,7 @@ def update_sheet(gc, sheet_id, worksheet_name, df):
             ws = sh.worksheet(worksheet_name)
             ws.clear()
         except gspread.WorksheetNotFound:
-            ws = sh.add_worksheet(title=worksheet_name, rows=100, cols=20)
+            ws = sh.add_worksheet(title=worksheet_name, rows=1000, cols=20)
         
         # 1. Convertir todo a string
         df_str = df.astype(str)
@@ -42,7 +41,7 @@ def update_sheet(gc, sheet_id, worksheet_name, df):
         print(f"❌ Error actualizando hoja '{worksheet_name}': {type(e).__name__} - {str(e)}")
 
 # ============================================================
-# LÓGICA DE NEGOCIO (Tus funciones de análisis)
+# LÓGICA DE NEGOCIO
 # ============================================================
 
 def clasificar_contacto(row):
@@ -53,7 +52,6 @@ def clasificar_contacto(row):
         '16-Desestimado (cartas 911 u otras áreas)'
     ]
     
-    # Lógica prioritaria
     if row.get('Estado') == 'PENDIENTE':
         return 'Sin cubrir'
     
@@ -63,149 +61,191 @@ def clasificar_contacto(row):
     elif resultado == '15-Sin cubrir':
         return 'Sin cubrir'
     else:
-        # Por descarte asumimos contacto si no es ninguno de los anteriores
         return 'Se contacta'
 
 def combinar(pct, abs_):
-    """Formato: 50% (10)"""
-    # Manejo seguro de series vacías o nulos
+    """Formato visual: 50% (10)"""
     pct = pct.fillna(0)
     abs_ = abs_.fillna(0)
     return pct.astype(int).astype(str) + '% (' + abs_.astype(int).astype(str) + ')'
 
-def generar_tabla_dashboard(df_base, es_comuna_2=True):
+def calcular_acumulados_por_comuna(df_base, fecha_corte='2025-09-01'):
     """
-    Genera la tabla resumen con formato 'X% (Y)' y acumulados.
-    Sirve tanto para Comuna 2 como para el resto.
+    Calcula los totales acumulados desde la fecha de corte para CADA comuna.
+    Devuelve un diccionario o DataFrame pequeño para cruzar.
     """
-    # 1. Filtrar Comuna
-    if es_comuna_2:
-        df = df_base[df_base['comuna_calculada'] == 2].copy()
-    else:
-        df = df_base[df_base['comuna_calculada'] != 2].copy()
+    df = df_base[df_base['Fecha Inicio'] >= fecha_corte].copy()
+    
+    # 1. Agrupar por Comuna
+    # Totales Generales
+    total_comuna = df.groupby('comuna_calculada').size().rename('acum_total')
+    
+    # CIS
+    cis_comuna = df[df['categoria_final'] == 'traslado efectivo a cis'].groupby('comuna_calculada').size().rename('acum_cis')
+    
+    # Automáticas (108)
+    df_auto = df[df['Tipo Carta'] == 'AUTOMATICA']
+    llamados_comuna = df_auto.groupby('comuna_calculada').size().rename('acum_llamados')
+    
+    # Desglose de Contactos (Automáticas)
+    conteo_contactos = df_auto.groupby(['comuna_calculada', 'Categoria_contacto']).size().unstack(fill_value=0)
+    
+    # Asegurar columnas
+    for cat in ['Se contacta', 'No se contacta', 'Sin cubrir']:
+        if cat not in conteo_contactos.columns: conteo_contactos[cat] = 0
+            
+    # Unir todo en un DF Maestro de Acumulados
+    df_acum = pd.concat([total_comuna, cis_comuna, llamados_comuna, conteo_contactos], axis=1).fillna(0)
+    
+    return df_acum
 
-    if df.empty: return pd.DataFrame()
-
-    # 2. Preparar datos
+def procesar_datos_unificados(df_base):
+    """
+    Procesa TODO el dataset agrupando por Semana y Comuna.
+    """
+    if df_base.empty: return pd.DataFrame()
+    
+    df = df_base.copy()
+    
+    # 1. Limpieza y Preparación
     df['Semana'] = df['Fecha Inicio'].dt.to_period('W-SUN').dt.start_time
     df['Categoria_contacto'] = df.apply(clasificar_contacto, axis=1)
-
-    # 3. Calcular Totales Semanales (Tail 8)
-    df_total_sem = df.groupby('Semana').size()
     
-    # 4. Métricas de Automáticas (108)
-    df_auto = df[df['Tipo Carta'] == 'AUTOMATICA']
-    df_auto_sem = df_auto.groupby('Semana').size()
-    
-    # Distribución categorías
-    df_auto_conteo = df_auto.groupby(['Semana', 'Categoria_contacto']).size().unstack(fill_value=0)
-    
-    # Asegurar que existan las 3 columnas siempre
-    for cat in ['Se contacta', 'No se contacta', 'Sin cubrir']:
-        if cat not in df_auto_conteo.columns:
-            df_auto_conteo[cat] = 0
-            
-    # Filtrar últimas 8 semanas disponibles
-    df_auto_conteo = df_auto_conteo.tail(8)
-    weeks_index = df_auto_conteo.index
-    
-    # Calcular porcentajes
-    totales_auto = df_auto_conteo.sum(axis=1)
-    # Evitar división por cero
-    df_porcentajes = df_auto_conteo.div(totales_auto.replace(0, 1), axis=0) * 100
-    df_porcentajes = df_porcentajes.round(0)
-
-    # 5. Derivaciones CIS (Usando categoria_final que es más limpia)
-    # Nota: Usamos 'traslado efectivo a cis' del proceso de limpieza previo
-    df_cis = df[df['categoria_final'] == 'traslado efectivo a cis']
-    df_cis_sem = df_cis.groupby('Semana').size().reindex(weeks_index, fill_value=0)
-
-    # 6. Construir DataFrame Final Transpuesto
-    df_final = pd.DataFrame({
-        'Intervenciones totales': df_total_sem.reindex(weeks_index, fill_value=0).values,
-        'Derivaciones CIS': df_cis_sem.values,
-        'Llamados 108': df_auto_sem.reindex(weeks_index, fill_value=0).values,
-        '% Contacta': combinar(df_porcentajes['Se contacta'], df_auto_conteo['Se contacta']).values,
-        '% No se contacta': combinar(df_porcentajes['No se contacta'], df_auto_conteo['No se contacta']).values,
-        '% Sin cubrir': combinar(df_porcentajes['Sin cubrir'], df_auto_conteo['Sin cubrir']).values
-    }).T
-
-    # 7. Etiquetas de columnas (Sem 27 Oct)
-    # Nota: locale puede fallar en linux minimizado, usamos formateo manual simple en inglés o diccionario si es crítico
-    # Usamos strftime simple para evitar errores de locale 'es_AR' no instalado en Cloud Run
+    # Limpiar Comuna (Forzar entero y quitar nulos)
+    df = df.dropna(subset=['comuna_calculada'])
     try:
-        import locale
-        locale.setlocale(locale.LC_TIME, 'es_ES.UTF-8') # Intento configurar español
+        df['comuna_calculada'] = df['comuna_calculada'].astype(int)
     except:
-        pass # Si falla, saldrá en inglés o default
-        
-    cols = []
-    for semana in weeks_index:
-        cols.append('Sem ' + semana.strftime('%d %b').replace('.', '').title())
-    df_final.columns = cols
+        # Si falla la conversión, filtramos filas malas
+        df = df[pd.to_numeric(df['comuna_calculada'], errors='coerce').notnull()]
+        df['comuna_calculada'] = df['comuna_calculada'].astype(int)
 
-    # 8. Columna Acumulado (Solo si se pide, por defecto SI para Comuna 2)
-    # Fecha corte definida en tu código: 1 de Septiembre 2025
-    fecha_corte = '2025-09-01'
+    # 2. Calcular Métricas Agrupadas por [Semana, Comuna]
     
-    if es_comuna_2: # O si quieres para ambos, quita el if
-        df_acum = df[df['Fecha Inicio'] >= fecha_corte]
-        
-        # Cálculos acumulados
-        total_acum = len(df_acum)
-        cis_acum = len(df_acum[df_acum['categoria_final'] == 'traslado efectivo a cis'])
-        
-        df_acum_auto = df_acum[df_acum['Tipo Carta'] == 'AUTOMATICA']
-        llamados_acum = len(df_acum_auto)
-        
-        conteo_acum = df_acum_auto['Categoria_contacto'].value_counts()
-        
-        def fmt_acum(cat):
-            val = conteo_acum.get(cat, 0)
-            pct = (val / llamados_acum * 100) if llamados_acum > 0 else 0
-            return f"{int(pct)}% ({int(val)})"
+    # A. Totales
+    grp = df.groupby(['Semana', 'comuna_calculada'])
+    df_total = grp.size().rename('Intervenciones totales')
+    
+    # B. Derivaciones CIS
+    df_cis = df[df['categoria_final'] == 'traslado efectivo a cis'].groupby(['Semana', 'comuna_calculada']).size().rename('Derivaciones CIS')
+    
+    # C. Automáticas (108)
+    df_auto = df[df['Tipo Carta'] == 'AUTOMATICA']
+    grp_auto = df_auto.groupby(['Semana', 'comuna_calculada'])
+    df_llamados = grp_auto.size().rename('Llamados 108')
+    
+    # D. Matriz de contactos (Semana x Comuna x Categoria)
+    df_conteo = df_auto.groupby(['Semana', 'comuna_calculada', 'Categoria_contacto']).size().unstack(fill_value=0)
+    
+    for cat in ['Se contacta', 'No se contacta', 'Sin cubrir']:
+        if cat not in df_conteo.columns: df_conteo[cat] = 0
 
-        columna_acumulada = [
-            total_acum,
-            cis_acum,
-            llamados_acum,
-            fmt_acum('Se contacta'),
-            fmt_acum('No se contacta'),
-            fmt_acum('Sin cubrir')
-        ]
-        
-        df_final['Acumulado (desde 1/9)'] = columna_acumulada
+    # 3. Unir todo en un DataFrame Principal
+    # Usamos un merge outer o concat para no perder datos si en una semana solo hubo de un tipo
+    resumen = pd.concat([df_total, df_cis, df_llamados], axis=1).fillna(0)
+    
+    # Unimos el desglose de contactos
+    # Como df_conteo tiene índice MultiIndex igual, alinea perfecto
+    resumen = pd.concat([resumen, df_conteo], axis=1).fillna(0)
+    
+    # 4. Calcular Porcentajes Semanales
+    # Totales de automáticas para el denominador
+    denominador = resumen['Llamados 108'].replace(0, 1)
+    
+    # Calculamos % y Strings combinados "50% (10)"
+    for cat in ['Se contacta', 'No se contacta', 'Sin cubrir']:
+        val = resumen[cat]
+        pct = (val / denominador * 100).round(0)
+        resumen[f'% {cat}'] = combinar(pct, val)
 
-    # Reseteamos index para que el nombre de las métricas sea una columna en Sheets
-    return df_final.reset_index().rename(columns={'index': 'Métrica'})
+    # 5. Agregar Acumulados (Cruzar por Comuna)
+    # Obtenemos la foto acumulada por comuna
+    df_acumulados_ref = calcular_acumulados_por_comuna(df)
+    
+    # Como el resumen es MultiIndex (Semana, Comuna), reseteamos para facilitar el merge
+    resumen = resumen.reset_index()
+    
+    # Hacemos el merge con los acumulados usando 'comuna_calculada'
+    resumen = pd.merge(resumen, df_acumulados_ref, on='comuna_calculada', how='left').fillna(0)
+    
+    # 6. Formatear Columnas de Acumulado "50% (10)"
+    denominador_acum = resumen['acum_llamados'].replace(0, 1)
+    
+    # Nombres de columnas del df_acumulados_ref que son conteos raw
+    mapa_acum = {
+        'Se contacta': 'Se contacta', # El merge trajo colapsos de nombre si coinciden, cuidado
+        'No se contacta': 'No se contacta',
+        'Sin cubrir': 'Sin cubrir'
+    }
+    
+    # Nota: Al hacer merge, si las columnas se llaman igual ('Se contacta'), pandas agrega sufijos (_x, _y).
+    # En el paso 4 ya creamos columnas '% Se contacta', pero las originales 'Se contacta' siguen ahí.
+    # El df_acumulados_ref trae también 'Se contacta'.
+    # Para evitar líos, renombramos antes del merge o recalculamos.
+    # Mejor estrategia: Recalcular strings de acumulado fila por fila.
+    
+    col_acumuladas_finales = []
+    
+    # Totales simples
+    # (Estas columnas vienen del merge, pandas les habrá puesto sufijo _y si chocaban, pero 'acum_total' es único)
+    
+    # Generamos la lista de strings para la columna "Acumulado" (que puede ser una sola con saltos de línea o varias)
+    # Tu formato anterior era una columna multivalor o varias columnas. 
+    # Para Looker es mejor tener columnas separadas: "Acumulado Total", "Acumulado CIS", etc.
+    
+    resumen['Acumulado Total'] = resumen['acum_total'].astype(int)
+    resumen['Acumulado CIS'] = resumen['acum_cis'].astype(int)
+    resumen['Acumulado 108'] = resumen['acum_llamados'].astype(int)
+    
+    # Para los porcentajes acumulados, tenemos que usar los valores raw que vinieron del merge
+    # Como df_acumulados_ref tenía columnas 'Se contacta', etc., al hacer merge con resumen (que ya las tenía),
+    # las del acumulado serán 'Se contacta_y'
+    
+    for cat in ['Se contacta', 'No se contacta', 'Sin cubrir']:
+        col_raw_acum = f"{cat}_y" # Viene del acumulado
+        val_acum = resumen[col_raw_acum]
+        pct_acum = (val_acum / denominador_acum * 100).round(0)
+        resumen[f'Acumulado % {cat}'] = combinar(pct_acum, val_acum)
 
-# --- FUNCIONES ANTIGUAS (Mantenidas por si acaso, o puedes borrarlas si ya no las usas) ---
-# ... (Puedes dejar generar_reporte_comuna2_metricas etc, si Looker las sigue usando) ...
-# Para mantener tu sheet limpio, solo voy a llamar a las nuevas en la función principal abajo.
+    # 7. Limpieza Final de Columnas
+    # Seleccionamos y renombramos para que quede bonito en Looker
+    resumen['Semana'] = resumen['Semana'].dt.strftime('%Y-%m-%d')
+    resumen.rename(columns={'comuna_calculada': 'Comuna'}, inplace=True)
+    
+    # Prefijo "Comuna " para que se vea bien
+    resumen['Comuna'] = 'Comuna ' + resumen['Comuna'].astype(str)
+    
+    cols_finales = [
+        'Semana', 'Comuna',
+        'Intervenciones totales', 'Derivaciones CIS', 'Llamados 108',
+        '% Se contacta', '% No se contacta', '% Sin cubrir',
+        'Acumulado Total', 'Acumulado CIS', 'Acumulado 108',
+        'Acumulado % Se contacta', 'Acumulado % No se contacta', 'Acumulado % Sin cubrir'
+    ]
+    
+    return resumen[cols_finales]
 
 # --- FUNCIÓN PRINCIPAL ---
 
 def ejecutar_reportes_looker(df_limpio):
-    print("📈 Iniciando generación de reportes para Looker...")
+    print("📈 Iniciando generación de reporte UNIFICADO POR COMUNA...")
     gc = get_gspread_client()
     
-    # Asegurar tipos de datos
+    # Asegurar tipos
     df_limpio['Fecha Inicio'] = pd.to_datetime(df_limpio['Fecha Inicio'])
     
-    # 1. Tabla Dashboard Comuna 2 (Nueva)
-    print("Generando Dashboard Comuna 2...")
-    df_dash_c2 = generar_tabla_dashboard(df_limpio, es_comuna_2=True)
-    update_sheet(gc, SHEET_ID_LOOKER, "Dashboard Intervenciones C2", df_dash_c2)
+    # Procesar
+    print("Procesando datos...")
+    df_final = procesar_datos_unificados(df_limpio)
     
-    # 2. Tabla Dashboard Sin Comuna 2 (Nueva)
-    print("Generando Dashboard Resto CABA...")
-    df_dash_sin_c2 = generar_tabla_dashboard(df_limpio, es_comuna_2=False)
-    update_sheet(gc, SHEET_ID_LOOKER, "Dashboard Intervenciones Sin C2", df_dash_sin_c2)
-
-    # -----------------------------------------------------------
-    # (Opcional) Si quieres mantener las tablas viejas también:
-    # -----------------------------------------------------------
-    # df_dni = generar_reporte_seguimiento_dni(df_limpio)
-    # update_sheet(gc, SHEET_ID_LOOKER, "EvolucionSemanalDNIRecoleta", df_dni)
+    # Ordenar: Primero por Semana (desc), luego por Comuna (asc)
+    # Para que las semanas recientes salgan arriba y las comunas ordenadas 1-15
+    # Extraemos el número de comuna para ordenar correctamente (1, 2, 10... no 1, 10, 2)
+    df_final['temp_comuna_num'] = df_final['Comuna'].str.extract('(\d+)').astype(int)
+    df_final = df_final.sort_values(by=['Semana', 'temp_comuna_num'], ascending=[False, True])
+    df_final = df_final.drop(columns=['temp_comuna_num'])
     
-    print("✅ Todos los reportes de Looker han sido actualizados.")
+    # Subir
+    update_sheet(gc, SHEET_ID_LOOKER, "Data_Por_Comuna_Looker", df_final)
+    
+    print("✅ Reporte unificado actualizado correctamente.")
