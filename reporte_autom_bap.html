@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tablero Operativo BA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        'ba-yellow': '#FFD100',
+                        'ba-grey': '#333333',
+                        'ba-light': '#F3F4F6'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .table-header { background-color: #008080; color: white; }
+        .table-row-even { background-color: #f9fafb; }
+        .table-row-odd { background-color: #ffffff; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <!-- Header -->
+    <header class="bg-ba-yellow p-4 shadow-md flex justify-between items-center sticky top-0 z-50">
+        <h1 class="text-2xl font-bold text-ba-grey uppercase tracking-wider">Indicadores Clave - Red de Atención</h1>
+        <div class="text-sm font-semibold text-right">
+            <div>Actualizado: 16/12/2025 08:53</div>
+            <div class="text-xs text-gray-600">Semana: 15 Dec</div>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-6 space-y-12">
+
+        <!-- SECCION 1: TABLAS -->
+
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            <div class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+                <div class="bg-teal-600 p-4 text-white font-bold text-lg flex justify-between items-center">
+                    <span>Panel Izquierdo</span>
+                    <select class="text-xs text-gray-800 p-1 rounded cursor-pointer focus:outline-none" 
+                            onchange="renderTable('table1', this.value)">
+                        <option value="c1" >Comuna 1</option><option value="c2" selected>Comuna 2</option><option value="c3" >Comuna 3</option><option value="c4" >Comuna 4</option><option value="c5" >Comuna 5</option><option value="c6" >Comuna 6</option><option value="c7" >Comuna 7</option><option value="c8" >Comuna 8</option><option value="c9" >Comuna 9</option><option value="c10" >Comuna 10</option><option value="c11" >Comuna 11</option><option value="c12" >Comuna 12</option><option value="c13" >Comuna 13</option><option value="c14" >Comuna 14</option><option value="c15" >Comuna 15</option><option value="resto" >Resto de la Ciudad</option><option value="total" >Total Ciudad</option>
+                    </select>
+                </div>
+                <div class="overflow-x-auto" id="table1"></div>
+            </div>
+        
+            
+            <div class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+                <div class="bg-teal-600 p-4 text-white font-bold text-lg flex justify-between items-center">
+                    <span>Panel Derecho</span>
+                    <select class="text-xs text-gray-800 p-1 rounded cursor-pointer focus:outline-none" 
+                            onchange="renderTable('table2', this.value)">
+                        <option value="c1" >Comuna 1</option><option value="c2" >Comuna 2</option><option value="c3" >Comuna 3</option><option value="c4" >Comuna 4</option><option value="c5" >Comuna 5</option><option value="c6" >Comuna 6</option><option value="c7" >Comuna 7</option><option value="c8" >Comuna 8</option><option value="c9" >Comuna 9</option><option value="c10" >Comuna 10</option><option value="c11" >Comuna 11</option><option value="c12" >Comuna 12</option><option value="c13" >Comuna 13</option><option value="c14" >Comuna 14</option><option value="c15" >Comuna 15</option><option value="resto" selected>Resto de la Ciudad</option><option value="total" >Total Ciudad</option>
+                    </select>
+                </div>
+                <div class="overflow-x-auto" id="table2"></div>
+            </div>
+        
+        </section>
+    
+
+        <!-- SECCION 2: GRAFICOS -->
+        <section class="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+            <h2 class="text-xl font-bold text-gray-800 mb-6 border-b pb-2">Evolución Semanal de DNI's (Operación Comuna 2)</h2>
+            <div class="relative h-96 w-full">
+                <canvas id="dniChart"></canvas>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="text-center p-8 text-gray-500 text-sm">
+        <p>Gobierno de la Ciudad de Buenos Aires - Red de Atención</p>
+    </footer>
+
+    
+    <script>
+        // DATOS GLOBALES
+        const allComunaData = {"c1": {"weeks": ["27 Oct", "03 Nov", "10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec"], "rows": [{"label": "Intervenciones totales", "base": "-", "vals": [1313, 1543, 1671, 1588, 1575, 1305, 1444, 168]}, {"label": "Derivaciones CIS", "base": "-", "vals": [123, 166, 195, 183, 183, 155, 180, 33]}, {"label": "Llamados 108", "base": "-", "vals": [615, 736, 889, 809, 853, 796, 882, 123]}, {"label": "% Se contacta", "base": "-", "vals": ["26% (157)", "28% (209)", "30% (270)", "28% (228)", "31% (264)", "27% (213)", "39% (342)", "37% (46)"]}, {"label": "% No se contacta", "base": "-", "vals": ["25% (151)", "31% (227)", "31% (273)", "26% (212)", "30% (254)", "26% (210)", "34% (303)", "23% (28)"]}, {"label": "% Sin cubrir", "base": "-", "vals": ["50% (307)", "41% (300)", "39% (346)", "46% (369)", "39% (335)", "47% (373)", "27% (237)", "40% (49)"]}]}, "c2": {"weeks": ["27 Oct", "03 Nov", "10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec"], "rows": [{"label": "Intervenciones totales", "base": "1364", "vals": [1606, 1800, 1731, 1632, 1558, 1212, 1183, 164]}, {"label": "Derivaciones CIS", "base": "92", "vals": [95, 94, 108, 109, 70, 116, 110, 26]}, {"label": "Llamados 108", "base": "247", "vals": [213, 246, 272, 251, 258, 292, 335, 56]}, {"label": "% Se contacta", "base": "151", "vals": ["53% (113)", "63% (156)", "55% (150)", "59% (149)", "64% (166)", "67% (197)", "65% (218)", "73% (41)"]}, {"label": "% No se contacta", "base": "90", "vals": ["44% (94)", "36% (88)", "43% (116)", "40% (100)", "34% (88)", "32% (94)", "34% (113)", "27% (15)"]}, {"label": "% Sin cubrir", "base": "6", "vals": ["3% (6)", "1% (2)", "2% (6)", "1% (2)", "2% (4)", "0% (1)", "1% (4)", "0% (0)"]}]}, "c3": {"weeks": ["27 Oct", "03 Nov", "10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec"], "rows": [{"label": "Intervenciones totales", "base": "-", "vals": [502, 555, 518, 586, 620, 596, 565, 66]}, {"label": "Derivaciones CIS", "base": "-", "vals": [44, 55, 51, 67, 51, 36, 72, 6]}, {"label": "Llamados 108", "base": "-", "vals": [208, 295, 282, 340, 336, 309, 322, 36]}, {"label": "% Se contacta", "base": "-", "vals": ["16% (33)", "18% (52)", "24% (69)", "27% (92)", "32% (109)", "28% (86)", "45% (144)", "11% (4)"]}, {"label": "% No se contacta", "base": "-", "vals": ["22% (46)", "19% (56)", "23% (65)", "19% (64)", "18% (60)", "17% (54)", "22% (70)", "14% (5)"]}, {"label": "% Sin cubrir", "base": "-", "vals": ["62% (129)", "63% (187)", "52% (148)", "54% (184)", "50% (167)", "55% (169)", "34% (108)", "75% (27)"]}]}, "c4": {"weeks": ["27 Oct", "03 Nov", "10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec"], "rows": [{"label": "Intervenciones totales", "base": "-", "vals": [350, 390, 369, 410, 402, 359, 410, 69]}, {"label": "Derivaciones CIS", "base": "-", "vals": [19, 51, 24, 30, 42, 35, 50, 3]}, {"label": "Llamados 108", "base": "-", "vals": [271, 338, 314, 327, 295, 300, 339, 62]}, {"label": "% Se contacta", "base": "-", "vals": ["19% (51)", "33% (111)", "24% (74)", "22% (72)", "33% (97)", "36% (108)", "41% (139)", "21% (13)"]}, {"label": "% No se contacta", "base": "-", "vals": ["14% (39)", "13% (44)", "23% (72)", "21% (69)", "23% (68)", "17% (50)", "32% (107)", "11% (7)"]}, {"label": "% Sin cubrir", "base": "-", "vals": ["67% (181)", "54% (183)", "54% (168)", "57% (186)", "44% (130)", "47% (142)", "27% (93)", "68% (42)"]}]}, "c5": {"weeks": ["27 Oct", "03 Nov", "10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec"], "rows": [{"label": "Intervenciones totales", "base": "-", "vals": [118, 129, 145, 164, 141, 131, 145, 18]}, {"label": "Derivaciones CIS", "base": "-", "vals": [10, 2, 2, 5, 2, 10, 2, 0]}, {"label": "Llamados 108", "base": "-", "vals": [101, 107, 126, 135, 109, 117, 128, 11]}, {"label": "% Se contacta", "base": "-", "vals": ["24% (24)", "8% (9)", "10% (13)", "10% (13)", "15% (16)", "15% (18)", "18% (23)", "18% (2)"]}, {"label": "% No se contacta", "base": "-", "vals": ["19% (19)", "14% (15)", "18% (23)", "12% (16)", "25% (27)", "9% (11)", "33% (42)", "9% (1)"]}, {"label": "% Sin cubrir", "base": "-", "vals": ["57% (58)", "78% (83)", "71% (90)", "79% (106)", "61% (66)", "75% (88)", "49% (63)", "73% (8)"]}]}, "c6": {"weeks": ["27 Oct", "03 Nov", "10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec"], "rows": [{"label": "Intervenciones totales", "base": "-", "vals": [107, 123, 140, 146, 140, 111, 152, 52]}, {"label": "Derivaciones CIS", "base": "-", "vals": [1, 2, 0, 2, 0, 0, 10, 1]}, {"label": "Llamados 108", "base": "-", "vals": [96, 111, 132, 129, 128, 101, 134, 49]}, {"label": "% Se contacta", "base": "-", "vals": ["9% (9)", "22% (24)", "10% (13)", "8% (10)", "15% (19)", "11% (11)", "28% (37)", "61% (30)"]}, {"label": "% No se contacta", "base": "-", "vals": ["22% (21)", "21% (23)", "20% (27)", "13% (17)", "19% (24)", "12% (12)", "42% (56)", "8% (4)"]}, {"label": "% Sin cubrir", "base": "-", "vals": ["69% (66)", "58% (64)", "70% (92)", "79% (102)", "66% (85)", "77% (78)", "31% (41)", "31% (15)"]}]}, "c7": {"weeks": ["27 Oct", "03 Nov", "10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec"], "rows": [{"label": "Intervenciones totales", "base": "-", "vals": [204, 273, 290, 276, 295, 243, 293, 38]}, {"label": "Derivaciones CIS", "base": "-", "vals": [1, 8, 9, 9, 7, 7, 11, 2]}, {"label": "Llamados 108", "base": "-", "vals": [168, 222, 245, 249, 270, 211, 255, 35]}, {"label": "% Se contacta", "base": "-", "vals": ["17% (29)", "17% (38)", "16% (38)", "16% (39)", "20% (54)", "15% (31)", "29% (73)", "14% (5)"]}, {"label": "% No se contacta", "base": "-", "vals": ["14% (23)", "14% (31)", "20% (50)", "16% (41)", "21% (56)", "19% (40)", "35% (90)", "11% (4)"]}, {"label": "% Sin cubrir", "base": "-", "vals": ["69% (116)", "69% (153)", "64% (157)", "68% (169)", "59% (160)", "66% (140)", "36% (92)", "74% (26)"]}]}, "c8": {"weeks": ["27 Oct", "03 Nov", "10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec"], "rows": [{"label": "Intervenciones totales", "base": "-", "vals": [37, 57, 33, 52, 36, 39, 52, 4]}, {"label": "Derivaciones CIS", "base": "-", "vals": [1, 0, 2, 1, 1, 2, 1, 1]}, {"label": "Llamados 108", "base": "-", "vals": [30, 54, 26, 47, 35, 35, 41, 3]}, {"label": "% Se contacta", "base": "-", "vals": ["17% (5)", "17% (9)", "4% (1)", "40% (19)", "9% (3)", "34% (12)", "29% (12)", "0% (0)"]}, {"label": "% No se contacta", "base": "-", "vals": ["30% (9)", "31% (17)", "23% (6)", "19% (9)", "37% (13)", "11% (4)", "44% (18)", "33% (1)"]}, {"label": "% Sin cubrir", "base": "-", "vals": ["53% (16)", "52% (28)", "73% (19)", "40% (19)", "54% (19)", "54% (19)", "27% (11)", "67% (2)"]}]}, "c9": {"weeks": ["27 Oct", "03 Nov", "10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec"], "rows": [{"label": "Intervenciones totales", "base": "-", "vals": [106, 87, 75, 62, 78, 74, 107, 25]}, {"label": "Derivaciones CIS", "base": "-", "vals": [7, 2, 0, 1, 1, 1, 10, 0]}, {"label": "Llamados 108", "base": "-", "vals": [99, 81, 59, 54, 72, 65, 96, 21]}, {"label": "% Se contacta", "base": "-", "vals": ["29% (29)", "7% (6)", "5% (3)", "2% (1)", "10% (7)", "5% (3)", "36% (35)", "19% (4)"]}, {"label": "% No se contacta", "base": "-", "vals": ["23% (23)", "27% (22)", "24% (14)", "26% (14)", "36% (26)", "26% (17)", "29% (28)", "14% (3)"]}, {"label": "% Sin cubrir", "base": "-", "vals": ["47% (47)", "65% (53)", "71% (42)", "72% (39)", "54% (39)", "69% (45)", "34% (33)", "67% (14)"]}]}, "c10": {"weeks": ["27 Oct", "03 Nov", "10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec"], "rows": [{"label": "Intervenciones totales", "base": "-", "vals": [52, 49, 82, 92, 82, 74, 78, 10]}, {"label": "Derivaciones CIS", "base": "-", "vals": [0, 0, 0, 3, 2, 1, 3, 0]}, {"label": "Llamados 108", "base": "-", "vals": [40, 44, 79, 87, 81, 68, 75, 10]}, {"label": "% Se contacta", "base": "-", "vals": ["8% (3)", "0% (0)", "14% (11)", "14% (12)", "10% (8)", "9% (6)", "36% (27)", "20% (2)"]}, {"label": "% No se contacta", "base": "-", "vals": ["18% (7)", "5% (2)", "4% (3)", "15% (13)", "30% (24)", "13% (9)", "31% (23)", "10% (1)"]}, {"label": "% Sin cubrir", "base": "-", "vals": ["75% (30)", "95% (42)", "82% (65)", "71% (62)", "60% (49)", "78% (53)", "33% (25)", "70% (7)"]}]}, "c11": {"weeks": ["27 Oct", "03 Nov", "10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec"], "rows": [{"label": "Intervenciones totales", "base": "-", "vals": [80, 93, 122, 105, 99, 132, 97, 19]}, {"label": "Derivaciones CIS", "base": "-", "vals": [0, 0, 0, 0, 0, 2, 1, 0]}, {"label": "Llamados 108", "base": "-", "vals": [74, 72, 115, 95, 84, 117, 85, 15]}, {"label": "% Se contacta", "base": "-", "vals": ["18% (13)", "7% (5)", "10% (12)", "16% (15)", "4% (3)", "9% (11)", "26% (22)", "7% (1)"]}, {"label": "% No se contacta", "base": "-", "vals": ["24% (18)", "12% (9)", "30% (34)", "21% (20)", "26% (22)", "13% (15)", "36% (31)", "13% (2)"]}, {"label": "% Sin cubrir", "base": "-", "vals": ["58% (43)", "81% (58)", "60% (69)", "63% (60)", "70% (59)", "78% (91)", "38% (32)", "80% (12)"]}]}, "c12": {"weeks": ["27 Oct", "03 Nov", "10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec"], "rows": [{"label": "Intervenciones totales", "base": "-", "vals": [84, 136, 101, 156, 125, 106, 116, 18]}, {"label": "Derivaciones CIS", "base": "-", "vals": [0, 4, 0, 2, 3, 3, 0, 0]}, {"label": "Llamados 108", "base": "-", "vals": [76, 124, 88, 94, 107, 93, 105, 16]}, {"label": "% Se contacta", "base": "-", "vals": ["12% (9)", "23% (28)", "11% (10)", "15% (14)", "22% (24)", "6% (6)", "29% (30)", "19% (3)"]}, {"label": "% No se contacta", "base": "-", "vals": ["24% (18)", "21% (26)", "32% (28)", "21% (20)", "22% (24)", "15% (14)", "40% (42)", "6% (1)"]}, {"label": "% Sin cubrir", "base": "-", "vals": ["64% (49)", "56% (70)", "57% (50)", "64% (60)", "55% (59)", "78% (73)", "31% (33)", "75% (12)"]}]}, "c13": {"weeks": ["27 Oct", "03 Nov", "10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec"], "rows": [{"label": "Intervenciones totales", "base": "-", "vals": [185, 218, 204, 196, 232, 247, 203, 24]}, {"label": "Derivaciones CIS", "base": "-", "vals": [2, 11, 6, 5, 3, 7, 5, 1]}, {"label": "Llamados 108", "base": "-", "vals": [162, 161, 174, 156, 181, 203, 168, 22]}, {"label": "% Se contacta", "base": "-", "vals": ["19% (30)", "10% (16)", "16% (28)", "14% (22)", "10% (18)", "11% (23)", "23% (39)", "14% (3)"]}, {"label": "% No se contacta", "base": "-", "vals": ["19% (31)", "22% (36)", "35% (61)", "29% (46)", "31% (57)", "14% (29)", "40% (68)", "18% (4)"]}, {"label": "% Sin cubrir", "base": "-", "vals": ["62% (101)", "68% (109)", "49% (85)", "56% (88)", "59% (106)", "74% (151)", "36% (61)", "68% (15)"]}]}, "c14": {"weeks": ["27 Oct", "03 Nov", "10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec"], "rows": [{"label": "Intervenciones totales", "base": "366", "vals": [358, 314, 370, 368, 390, 384, 665, 122]}, {"label": "Derivaciones CIS", "base": "7", "vals": [2, 6, 4, 8, 10, 11, 23, 6]}, {"label": "Llamados 108", "base": "245", "vals": [215, 213, 186, 257, 267, 271, 266, 51]}, {"label": "% Se contacta", "base": "23% (58)", "vals": ["13% (29)", "23% (50)", "13% (25)", "19% (49)", "19% (52)", "28% (75)", "33% (89)", "69% (35)"]}, {"label": "% No se contacta", "base": "31% (76)", "vals": ["28% (60)", "21% (44)", "27% (51)", "29% (75)", "31% (84)", "27% (74)", "35% (93)", "27% (14)"]}, {"label": "% Sin cubrir", "base": "45% (111)", "vals": ["59% (126)", "56% (119)", "59% (110)", "52% (133)", "49% (131)", "45% (122)", "32% (84)", "4% (2)"]}]}, "c15": {"weeks": ["27 Oct", "03 Nov", "10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec"], "rows": [{"label": "Intervenciones totales", "base": "-", "vals": [381, 463, 411, 602, 363, 377, 353, 70]}, {"label": "Derivaciones CIS", "base": "-", "vals": [51, 63, 70, 70, 53, 62, 61, 15]}, {"label": "Llamados 108", "base": "-", "vals": [178, 181, 191, 338, 180, 162, 204, 34]}, {"label": "% Se contacta", "base": "-", "vals": ["17% (31)", "25% (45)", "17% (32)", "53% (180)", "16% (28)", "21% (34)", "25% (52)", "24% (8)"]}, {"label": "% No se contacta", "base": "-", "vals": ["10% (18)", "13% (23)", "23% (43)", "16% (53)", "21% (37)", "17% (27)", "37% (76)", "18% (6)"]}, {"label": "% Sin cubrir", "base": "-", "vals": ["72% (129)", "62% (113)", "61% (116)", "31% (105)", "64% (115)", "62% (101)", "37% (76)", "59% (20)"]}]}, "resto": {"weeks": ["27 Oct", "03 Nov", "10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec"], "rows": [{"label": "Intervenciones totales", "base": "4344", "vals": [3949, 4501, 4573, 4842, 4607, 4243, 4729, 712]}, {"label": "Derivaciones CIS", "base": "341", "vals": [265, 371, 365, 388, 361, 332, 438, 69]}, {"label": "Llamados 108", "base": "2798", "vals": [2340, 2746, 2911, 3127, 3000, 2861, 3107, 488]}, {"label": "% Se contacta", "base": "782", "vals": ["19% (456)", "22% (602)", "21% (601)", "25% (771)", "23% (702)", "22% (642)", "34% (1064)", "32% (156)"]}, {"label": "% No se contacta", "base": "717", "vals": ["21% (485)", "21% (576)", "26% (752)", "21% (671)", "26% (777)", "20% (568)", "34% (1053)", "17% (81)"]}, {"label": "% Sin cubrir", "base": "1299", "vals": ["60% (1399)", "57% (1568)", "54% (1558)", "54% (1685)", "51% (1521)", "58% (1651)", "32% (990)", "51% (251)"]}]}, "total": {"weeks": ["27 Oct", "03 Nov", "10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec"], "rows": [{"label": "Intervenciones totales", "base": "-", "vals": [5555, 6301, 6304, 6474, 6165, 5455, 5912, 876]}, {"label": "Derivaciones CIS", "base": "-", "vals": [360, 465, 473, 497, 431, 448, 548, 95]}, {"label": "Llamados 108", "base": "-", "vals": [2553, 2992, 3183, 3378, 3258, 3153, 3442, 544]}, {"label": "% Se contacta", "base": "-", "vals": ["22% (569)", "25% (758)", "24% (751)", "27% (920)", "27% (868)", "27% (839)", "37% (1282)", "36% (197)"]}, {"label": "% No se contacta", "base": "-", "vals": ["23% (579)", "22% (664)", "27% (868)", "23% (771)", "27% (865)", "21% (662)", "34% (1166)", "18% (96)"]}, {"label": "% Sin cubrir", "base": "-", "vals": ["55% (1405)", "52% (1570)", "49% (1564)", "50% (1687)", "47% (1525)", "52% (1652)", "29% (994)", "46% (251)"]}]}};
+        const chartDataInfo = {"labels": ["27 Oct", "03 Nov", "10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec"], "datasets": [{"label": "Nuevos", "data": [55, 57, 65, 52, 42, 34, 37, 7], "backgroundColor": "#10B981"}, {"label": "Recurrentes", "data": [70, 71, 94, 99, 61, 77, 70, 12], "backgroundColor": "#3B82F6"}, {"label": "Migratorios", "data": [65, 59, 59, 44, 49, 57, 51, 12], "backgroundColor": "#F97316"}]};
+
+        // RENDER TABLA
+        function renderTable(containerId, key) {
+            const data = allComunaData[key];
+            if (!data) return;
+            const container = document.getElementById(containerId);
+            
+            let ths = '<th class="p-3 text-left">Indicadores</th><th class="p-3 w-20 bg-teal-800">Línea Base</th>';
+            data.weeks.forEach(w => ths += `<th class="p-3 w-24">${w}</th>`);
+            
+            let trs = '';
+            data.rows.forEach((r, idx) => {
+                let tds = '';
+                r.vals.forEach(v => tds += `<td class="p-3 text-gray-800">${v}</td>`);
+                trs += `
+                    <tr class="hover:bg-yellow-50 transition-colors">
+                        <td class="p-3 text-left font-semibold text-gray-700 bg-gray-50 sticky left-0">${r.label}</td>
+                        <td class="p-3 font-bold text-gray-600 bg-gray-100 border-r border-gray-300">${r.base}</td>
+                        ${tds}
+                    </tr>`;
+            });
+
+            container.innerHTML = `<table class="w-full text-sm text-center"><thead><tr class="bg-teal-700 text-white">${ths}</tr></thead><tbody class="divide-y divide-gray-200">${trs}</tbody></table>`;
+        }
+
+        renderTable('table1', 'c2');
+        renderTable('table2', 'resto');
+
+        // CHART
+        const ctx = document.getElementById('dniChart').getContext('2d');
+        // Register Plugin explicitly just in case
+        if (typeof ChartDataLabels !== 'undefined') {
+            Chart.register(ChartDataLabels);
+        }
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: chartDataInfo,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { stacked: true, grid: { display: false } },
+                    y: { stacked: true, beginAtZero: true }
+                },
+                plugins: {
+                    legend: { position: 'top' },
+                    tooltip: { mode: 'index', intersect: false },
+                    datalabels: {
+                        color: 'white',
+                        font: { weight: 'bold', size: 10 },
+                        formatter: (value) => value > 0 ? value : ''
+                    }
+                }
+            },
+            plugins: [{
+                id: 'totalLabels',
+                afterDatasetsDraw: (chart) => {
+                    const ctx = chart.ctx;
+                    chart.data.labels.forEach((label, index) => {
+                        let total = 0;
+                        chart.data.datasets.forEach(ds => total += ds.data[index]);
+                        if (total > 0) {
+                            const meta = chart.getDatasetMeta(chart.data.datasets.length - 1);
+                            const x = meta.data[index].x;
+                            const y = meta.data[index].y;
+                            ctx.fillStyle = 'black';
+                            ctx.font = 'bold 11px Inter';
+                            ctx.textAlign = 'center';
+                            ctx.fillText(total, x, y - 5);
+                        }
+                    });
+                }
+            }]
+        });
+    </script>
+    
+</body>
+</html>
