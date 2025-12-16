@@ -176,13 +176,12 @@ def main():
     base_dummy = ["-", "-", "-", "-", "-", "-"]
     base_c2 = ["1364", "92", "247", "151", "90", "6"]
     
-    # Comuna 14 (Solicitado por usuario)
-    # Formato: Intervenciones, CIS, 108, % Se contacta, % No contacta, % Sin cubrir
-    # Valores: 366, 7, 245, 58 (23%), 76 (31%), 111 (45%)
-    # Ajustamos formato porcentaje para consistencia con columnas: "23% (58)"
+    # Comuna 14
+    # Valores: 366, 7, 245, 23% (58), 31% (76), 45% (111)
     base_c14 = ["366", "7", "245", "23% (58)", "31% (76)", "45% (111)"]
     
-    base_resto = ["4344", "341", "2798", "782", "717", "1299"]
+    # Base Total (Antiguamente Resto - Solicitado usar esta base para Total)
+    base_total = ["4344", "341", "2798", "782", "717", "1299"]
 
     for c in range(1, 16):
         if c == 2:
@@ -198,13 +197,8 @@ def main():
             base
         )
     
-    all_data['resto'] = get_stats_data_raw(
-        df,
-        lambda d: d[d['comuna_calculada'] != 2],
-        base_resto
-    )
-    
-    all_data['total'] = get_stats_data_raw(df, lambda d: d, base_dummy)
+    # Total Ciudad (Usando base_total)
+    all_data['total'] = get_stats_data_raw(df, lambda d: d, base_total)
 
     print("📈 Calculando evolución DNI Comuna 2...")
     dni_data = calculate_dni_evolution(df)
@@ -251,9 +245,8 @@ def main():
             sel = "selected" if f"c{i}" == default_key else ""
             opts += f'<option value="c{i}" {sel}>Comuna {i}</option>'
         
-        sel_resto = "selected" if default_key == "resto" else ""
-        sel_total = "selected" if default_key == "total" else ""
-        opts += f'<option value="resto" {sel_resto}>Resto de la Ciudad</option>'
+        # Opcion Total (Default si se pide o si era resto)
+        sel_total = "selected" if default_key in ["total", "resto"] else ""
         opts += f'<option value="total" {sel_total}>Total Ciudad</option>'
 
         return f'''
@@ -272,7 +265,7 @@ def main():
     new_section_content = f'''
         <section class="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {build_container_html('table1', 'Panel Izquierdo', 'c2')}
-            {build_container_html('table2', 'Panel Derecho', 'resto')}
+            {build_container_html('table2', 'Panel Derecho', 'total')}
         </section>
     '''
     
@@ -318,7 +311,7 @@ def main():
         }}
 
         renderTable('table1', 'c2');
-        renderTable('table2', 'resto');
+        renderTable('table2', 'total');
 
         // CHART
         const ctx = document.getElementById('dniChart').getContext('2d');
