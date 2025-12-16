@@ -220,6 +220,45 @@ def main():
     html = html.replace("Red BAP", "Red de Atención")
     html = html.replace("BAP Personas", "Red de Atención")
 
+    # --- NUEVO HEADER (Diseño Visual) ---
+    # Reemplazamos todo el bloque <header>...</header> del template original
+    new_header = '''
+    <header class="sticky top-0 z-50 flex w-full h-24 bg-[#1E2B37] font-sans shadow-md">
+        <!-- Teal Bar Wrapper -->
+        <div class="flex-grow bg-gradient-to-r from-[#8BE3D9] to-[#80E0D6] rounded-tr-[3rem] flex mr-4 relative items-center">
+            
+            <!-- Yellow Section (Tab) -->
+            <div class="bg-ba-yellow h-full w-full lg:w-1/2 rounded-tr-[3rem] px-8 flex items-center justify-between sm:justify-start sm:space-x-8 relative z-10 shadow-sm">
+                 <h1 class="text-xl md:text-2xl font-bold text-ba-grey uppercase tracking-wider leading-tight">
+                    INDICADORES CLAVE - RED DE ATENCIÓN
+                 </h1>
+                 
+                 <!-- Vertical Divider & Date -->
+                 <div class="hidden sm:flex items-center space-x-4 border-l border-gray-400 pl-4 h-1/2">
+                     <div class="flex flex-col text-xs font-semibold text-gray-800">
+                          <!-- Placeholders que el regex reemplazará abajo -->
+                          <div>Actualizado: 01/01/2000 00:00</div>
+                          <div class="text-gray-600">Semana: 01 Jan</div>
+                     </div>
+                 </div>
+            </div>
+
+            <!-- Teal Decoration (Empty space to the right of yellow acts as the teal bar) -->
+        </div>
+
+        <!-- Logo Area -->
+        <div class="w-24 md:w-32 flex items-center justify-center shrink-0">
+             <!-- BA Logo Approximation -->
+             <svg class="h-12 w-auto fill-gray-200" viewBox="0 0 70 30" xmlns="http://www.w3.org/2000/svg">
+                <path d="M10 25 L10 5 L20 5 C 26 5 26 10 20 10 L15 10 L15 13 L22 13 C 28 13 28 19 22 19 L15 19 L15 17 L21 17 C 23 17 23 15 21 15 L15 15 L15 25 Z" fill="#E5E7EB"/>
+                <path d="M35 25 L40 5 L45 25 L41 25 L40 21 L34 21 L33 25 Z M 37 13 L 35 18 L 39 18 Z" fill="#E5E7EB"/>
+             </svg>
+        </div>
+    </header>
+    '''
+    
+    html = re.sub(r'<header.*?</header>', new_header, html, flags=re.DOTALL)
+
     # --- INYECCIONES ---
     
     # 1. CDN Compatibles (Chart.js 3.9.1 + Datalabels 2.2.0)
