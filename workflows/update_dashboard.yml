@@ -1,0 +1,43 @@
+name: Actualizar Dashboard Semanal
+
+on:
+  schedule:
+    # Lunes a las 05:00 AM hora Argentina (08:00 UTC)
+    - cron: '0 8 * * 1'
+  workflow_dispatch: # Botón para ejecutar manualmente para pruebas
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v3
+
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Instalar dependencias
+        run: |
+          pip install pandas numpy fsspec gspread oauth2client google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client openpyxl parquet pyarrow fastparquet
+
+      - name: Crear credenciales desde Secretos
+        run: |
+          echo "${{ secrets.GCP_SA_KEY }}" > credentials.json
+
+      - name: Ejecutar Generador
+        # Asegúrate de que tu script de python se llame EXACTAMENTE así
+        run: python dashboard_generator.py
+
+      - name: Guardar cambios (Commit & Push)
+        run: |
+          git config --global user.name 'GitHub Action Bot'
+          git config --global user.email 'action@github.com'
+          git add reporte_autom_bap.html
+          git commit -m "Auto-update: Dashboard semanal" || echo "No hay cambios para commitear"
+          git push
