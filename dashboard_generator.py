@@ -220,9 +220,22 @@ def main():
     html = html.replace("Red BAP", "Red de Atención")
     html = html.replace("BAP Personas", "Red de Atención")
 
+    # --- LOGO (Base64) ---
+    import base64
+    logo_b64 = ""
+    logo_path = "logoba-removebg-preview.png"
+    
+    if os.path.exists(logo_path):
+        with open(logo_path, "rb") as image_file:
+            logo_b64 = base64.b64encode(image_file.read()).decode('utf-8')
+            img_tag = f'<img src="data:image/png;base64,{logo_b64}" alt="BA Logo" class="h-16 w-auto object-contain" />'
+    else:
+        # Fallback si no encuentra la imagen
+        img_tag = '<span class="text-white font-bold text-xl">BA</span>'
+
     # --- NUEVO HEADER (Diseño Visual) ---
     # Reemplazamos todo el bloque <header>...</header> del template original
-    new_header = '''
+    new_header = f'''
     <header class="sticky top-0 z-50 flex w-full h-24 bg-[#1E2B37] font-sans shadow-md">
         <!-- Teal Bar Wrapper -->
         <div class="flex-grow bg-gradient-to-r from-[#8BE3D9] to-[#80E0D6] rounded-tr-[3rem] flex mr-4 relative items-center">
@@ -247,17 +260,14 @@ def main():
         </div>
 
         <!-- Logo Area -->
-        <div class="w-24 md:w-32 flex items-center justify-center shrink-0">
-             <!-- BA Logo Approximation -->
-             <svg class="h-12 w-auto fill-gray-200" viewBox="0 0 70 30" xmlns="http://www.w3.org/2000/svg">
-                <path d="M10 25 L10 5 L20 5 C 26 5 26 10 20 10 L15 10 L15 13 L22 13 C 28 13 28 19 22 19 L15 19 L15 17 L21 17 C 23 17 23 15 21 15 L15 15 L15 25 Z" fill="#E5E7EB"/>
-                <path d="M35 25 L40 5 L45 25 L41 25 L40 21 L34 21 L33 25 Z M 37 13 L 35 18 L 39 18 Z" fill="#E5E7EB"/>
-             </svg>
+        <div class="w-24 md:w-32 flex items-center justify-center shrink-0 pr-4">
+             {img_tag}
         </div>
     </header>
     '''
     
     html = re.sub(r'<header.*?</header>', new_header, html, flags=re.DOTALL)
+
 
     # --- INYECCIONES ---
     
