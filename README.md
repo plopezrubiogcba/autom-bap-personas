@@ -4,7 +4,7 @@ Este repositorio contiene el sistema de automatización para el procesamiento, a
 
 El objetivo principal es transformar planillas operativas semanales en un **Dashboard Interactivo HTML** que permite monitorear indicadores clave por Comuna y la evolución de la población asistida.
 
-## 🚀 Funcionalidades Principales
+##  Funcionalidades Principales
 
 1.  **Ingesta Automática**: Descarga y procesa archivos Excel desde Google Drive.
 2.  **ETL & Normalización**: Limpieza de datos, normalización de textos y georreferenciación (asignación de Comunas).
@@ -15,7 +15,7 @@ El objetivo principal es transformar planillas operativas semanales en un **Dash
     *   Gráficos de evolución de población (Nuevos vs. Recurrentes vs. Migratorios).
     *   Diseño *responsive* con Tailwind CSS e interactividad con Chart.js.
 
-## 📂 Estructura del Proyecto
+##  Estructura del Proyecto
 
 ### Scripts Principales
 
@@ -41,9 +41,9 @@ El objetivo principal es transformar planillas operativas semanales en un **Dash
 *   **`credentials.json`**: (Ignorado en git) Credenciales de servicio para acceso a Google Cloud/Drive.
 *   **`2025_historico_limpio.parquet`**: Base de datos columnar optimizada con todo el historial de intervenciones.
 
-## 🛠️ Flujo de Trabajo (Workflow)
+## Flujo de Trabajo (Workflow)
 
-```mermaid
+
 graph TD
     A[Excel Semanal (Drive/Mail)] -->|Trigger| B(main.py)
     B -->|Descarga| C(data_processor.py)
@@ -52,9 +52,9 @@ graph TD
     E -->|Calculo KPIs| F{Generación HTML}
     F -->|Inyección JSON+JS| G[reporte_autom_bap.html]
     G -->|Deploy| H[GitHub Pages / Web]
-```
 
-## 📊 Lógica de Negocio Destacada
+
+##  Lógica Destacada
 
 ### Clasificación de Contacto
 El sistema aplica reglas estrictas para determinar el resultado de una intervención:
@@ -68,7 +68,7 @@ Algoritmo cronológico que analiza el historial de cada DNI para clasificarlo se
 *   **Recurrente**: Visto previamente en la misma comuna recientemente.
 *   **Migratorio**: Visto previamente pero en otra comuna.
 
-## 💻 Instalación y Ejecución Local
+## Instalación y Ejecución Local
 
 1.  **Requisitos**: Python 3.9+
 2.  **Instalar dependencias**:
@@ -84,6 +84,6 @@ Algoritmo cronológico que analiza el historial de cada DNI para clasificarlo se
     ```
     Esto actualizará el archivo `reporte_autom_bap.html` localmente.
 
-## 🚀 Despliegue
+## Despliegue
 
 El proyecto está configurado para desplegarse automáticamente mediante **GitHub Actions** en **GitHub Pages**, permitiendo acceso público o restringido al tablero actualizado semanalmente.
