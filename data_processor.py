@@ -276,7 +276,7 @@ def procesar_datos(excel_content_bytes, folder_id):
     df_actualizado['Persona Apellido'] = df_actualizado['Persona Apellido'].apply(limpiar_texto)
 
     # 3. Eliminar Agencias
-    agencias_a_eliminar = ['DIPA I COMBATE', 'MAPA DE RIESGO - SEGUIMIENTO', 'AREA OPERATIVA', 'SALUD MENTAL'] # Agrega las que faltan
+    agencias_a_eliminar = ['DIPA I COMBATE', 'MAPA DE RIESGO - SEGUIMIENTO', 'MAPA DE REISGO - SEGUIMIENTO','DIPA II ZABALA', 'AREA OPERATIVA', 'SALUD MENTAL']
     df_actualizado = df_actualizado[~df_actualizado['Agencia'].isin(agencias_a_eliminar)]
 
     # 4. Categorización
