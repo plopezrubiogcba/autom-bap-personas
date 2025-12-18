@@ -145,9 +145,26 @@ CATEGORIAS_TODAS = CATEGORIAS_BRINDA_DATOS + CATEGORIAS_NO_BRINDA_DATOS + CATEGO
 PATRONES_EXACTOS = {
     "17 dipa derivacion a cis": "traslado efectivo a cis",
     "01 positivo traslado a cis hogar 08 positivo derivacion a sas cud cp identidad etc": "traslado efectivo a cis",
-    # ... (Agregado resumen de tus patrones para no hacer el código infinito, puedes pegar todos tus patrones aquí) ...
+    '10 se contacta pero rechaza pp por desconocimiento voluntad etc':'se realiza entrevisa',
+    '21 asesoramiento sobre programas': 'se realiza entrevista',
+    '16 dipa entrega de insumos servicios 21 asesoramiento sobre programas' : 'traslado/acompanamiento a otros efectores',
+    '16 dipa entrega de insumos servicios 7 positivo entrega de insumos' : 'traslado/acompanamiento a otros efectores',
+    '21 asesoramiento sobre programas 16 dipa entrega de insumos servicios':'traslado/acompanamiento a otros efectores',
+    '7 positivo entrega de insumos 16 dipa entrega de insumos servicios':'traslado/acompanamiento a otros efectores',
+    '7 positivo entrega de insumos 21 asesoramiento sobre programas':'traslado/acompanamiento a otros efectores',
+    '21 asesoramiento sobre programas 7 positivo entrega de insumos':'traslado/acompanamiento a otros efectores',
+    '16 dipa entrega de insumos servicios 21 asesoramiento sobre programas 7 positivo entrega de insumos':'traslado/acompanamiento a otros efectores',
+    '11 se contacta pero rechaza pp por disconformidad egresado' : 'rechaza entrevista y se retira del lugar',
+    '10 se contacta pero rechaza pp por desconocimiento voluntad etc 11 se contacta pero rechaza pp por disconformidad egresado':'rechaza entrevista y se retira del lugar',
+    '9 se contacta pero rechaza entrevista 21 asesoramiento sobre programas':'rechaza entrevista y se retira del lugar',
+    '9 se contacta pero rechaza entrevista 24 persona abandona el lugar por intervencion ep policia':'rechaza entrevista y se retira del lugar',
+    '21 asesoramiento sobre programas 10 se contacta pero rechaza pp por desconocimiento voluntad etc':'rechaza entrevista y se retira del lugar',
+    '10 se contacta pero rechaza pp por desconocimiento voluntad etc 21 asesoramiento sobre programas':'rechaza entrevista y se retira del lugar',
+    '21 asesoramiento sobre programas 9 se contacta pero rechaza entrevista':'rechaza entrevista y se retira del lugar',
+    '10 se contacta pero rechaza pp por desconocimiento voluntad etc 9 se contacta pero rechaza entrevista':'rechaza entrevista y se retira del lugar',
+    'asesoramiento sobre programas rechan entrevista se quedan en el lugar':'rechaza entrevista y se queda en el lugar',
+    '10 se contacta pero rechaza pp por desconocimiento voluntad etc': 'rechaza entrevista y se retira del lugar',
 }
-# Nota: He simplificado los diccionarios por espacio, pero la lógica es la misma. Asegúrate de incluir todos tus PATRONES_EXACTOS si son críticos.
 
 PATRONES_PERSONALIZADOS = {
     "derivacion a cis": "traslado efectivo a cis",
