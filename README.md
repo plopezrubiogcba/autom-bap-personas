@@ -43,7 +43,7 @@ El objetivo principal es transformar planillas operativas semanales en un **Dash
 
 ## 🛠️ Flujo de Trabajo (Workflow)
 
-```mermaid
+
 graph TD
     A[Excel Semanal (Drive/Mail)] -->|Trigger| B(main.py)
     B -->|Descarga| C(data_processor.py)
@@ -52,7 +52,7 @@ graph TD
     E -->|Calculo KPIs| F{Generación HTML}
     F -->|Inyección JSON+JS| G[reporte_autom_bap.html]
     G -->|Deploy| H[GitHub Pages / Web]
-```
+
 
 ## 📊 Lógica de Negocio Destacada
 
