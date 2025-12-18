@@ -68,21 +68,6 @@ Algoritmo cronológico que analiza el historial de cada DNI para clasificarlo se
 *   **Recurrente**: Visto previamente en la misma comuna recientemente.
 *   **Migratorio**: Visto previamente pero en otra comuna.
 
-## Instalación y Ejecución Local
-
-1.  **Requisitos**: Python 3.9+
-2.  **Instalar dependencias**:
-    ```bash
-    pip install -r requirements.txt
-    ```
-3.  **Configuración**:
-    *   Colocar `credentials.json` en la raíz.
-    *   Asegurar acceso a la carpeta de Drive definida en `FOLDER_ID_DB`.
-4.  **Ejecutar Generador**:
-    ```bash
-    python dashboard_generator.py
-    ```
-    Esto actualizará el archivo `reporte_autom_bap.html` localmente.
 
 ## Despliegue
 
