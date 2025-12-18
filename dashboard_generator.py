@@ -36,8 +36,11 @@ def clasificar_contacto(row):
     else:
         return 'Se contacta'
 
-def calculate_dni_evolution(df_base):
-    """Calcula evolución de DNIs para Comuna 2 (Nuevos/Recurrentes/Migratorios)."""
+def calculate_dni_evolution(df_base, target_comuna_id=2):
+    """
+    Calcula evolución de DNIs para una Comuna dada (Nuevos/Recurrentes/Migratorios).
+    target_comuna_id puede ser int (2, 14, etc).
+    """
     COL_FECHA = "Fecha Inicio"
     COL_DNI = "DNI_Categorizado"
     COL_COMUNA = "comuna_calculada"
@@ -50,11 +53,20 @@ def calculate_dni_evolution(df_base):
     df["Semana"] = df[COL_FECHA].dt.to_period("W-SUN").apply(lambda r: r.start_time)
     df_sem = df.drop_duplicates(subset=["Semana", COL_DNI]).copy()
 
-    def is_recoleta_val(x):
+    def is_target_val(x):
         if pd.isna(x): return False
-        if isinstance(x, (int, float)): return x == 2.0
+        if isinstance(x, (int, float)): return x == float(target_comuna_id)
+        
         sx = str(x).upper().replace(" ", "")
-        return sx in {"2", "2.0", "COMUNA2"}
+        
+        # Variaciones comunes
+        if target_comuna_id == 2:
+            return sx in {"2", "2.0", "COMUNA2"}
+        elif target_comuna_id == 14:
+            return sx in {"14", "14.0", "COMUNA14"}
+        else:
+            # Fallback generico
+            return sx in {str(target_comuna_id), f"{target_comuna_id}.0", f"COMUNA{target_comuna_id}"}
 
     semanas = sorted(df_sem["Semana"].unique())
     dni_last_comuna = {}
@@ -63,21 +75,26 @@ def calculate_dni_evolution(df_base):
 
     for semana in semanas:
         rows_sem = df_sem[df_sem["Semana"] == semana]
-        rows_recoleta = rows_sem[rows_sem[COL_COMUNA].apply(is_recoleta_val)]
-        dnis_recoleta = rows_recoleta[COL_DNI].unique()
+        rows_target = rows_sem[rows_sem[COL_COMUNA].apply(is_target_val)]
+        dnis_target = rows_target[COL_DNI].unique()
 
         rec_count = 0
         mig_count = 0
         nue_count = 0
 
-        for dni in dnis_recoleta:
+        for dni in dnis_target:
             prior_comuna = dni_last_comuna.get(dni, None)
             if prior_comuna is None and dni not in dni_seen:
                 nue_count += 1
             else:
-                if prior_comuna is not None and is_recoleta_val(prior_comuna):
+                # Si existia su ultima comuna registrada y ERA la target => Recurrente
+                if prior_comuna is not None and is_target_val(prior_comuna):
                     rec_count += 1
                 else:
+                    # Si existia pero NO era la target => Migratorio (viene de otro lado)
+                    # O si no tenia prior_comuna pero YA FUE visto (caso borde) => Migratorio interno (??)
+                    # La logica original dice: "if prior_comuna is None and dni not in dni_seen: Nuevo"
+                    # "else: ..." -> aqui entra si tiene prior_comuna OR dni in dni_seen.
                     mig_count += 1
         
         resultados.append({
@@ -200,16 +217,23 @@ def main():
     # Total Ciudad (Usando base_total)
     all_data['total'] = get_stats_data_raw(df, lambda d: d, base_total)
 
+    def prepare_chart_json(dni_data_list):
+        return {
+            "labels": [d["Semana"].strftime("%d %b") for d in dni_data_list],
+            "datasets": [
+               {"label": "Nuevos", "data": [d["nuevos"] for d in dni_data_list], "backgroundColor": "#10B981"},
+               {"label": "Recurrentes", "data": [d["recurrentes"] for d in dni_data_list], "backgroundColor": "#3B82F6"},
+               {"label": "Migratorios", "data": [d["migratorios"] for d in dni_data_list], "backgroundColor": "#F97316"}
+            ]
+        }
+
     print("📈 Calculando evolución DNI Comuna 2...")
-    dni_data = calculate_dni_evolution(df)
-    chart_json = {
-        "labels": [d["Semana"].strftime("%d %b") for d in dni_data],
-        "datasets": [
-           {"label": "Nuevos", "data": [d["nuevos"] for d in dni_data], "backgroundColor": "#10B981"},
-           {"label": "Recurrentes", "data": [d["recurrentes"] for d in dni_data], "backgroundColor": "#3B82F6"},
-           {"label": "Migratorios", "data": [d["migratorios"] for d in dni_data], "backgroundColor": "#F97316"}
-        ]
-    }
+    dni_data_c2 = calculate_dni_evolution(df, target_comuna_id=2)
+    chart_json_c2 = prepare_chart_json(dni_data_c2)
+
+    print("📈 Calculando evolución DNI Comuna 14...")
+    dni_data_c14 = calculate_dni_evolution(df, target_comuna_id=14)
+    chart_json_c14 = prepare_chart_json(dni_data_c14)
 
     print(f"📝 Generando HTML Interactivo...")
     
@@ -272,19 +296,13 @@ def main():
     # --- INYECCIONES ---
     
     # 1. CDN Compatibles (Chart.js 3.9.1 + Datalabels 2.2.0)
-    # Reemplazamos cualquier script de chart js previo para asegurar version
-    # Pero para ser sutil, inyectamos en HEAD y luego limpiaremos los viejos via replace si es necesario
-    # Mejor aun: reemplacemos la linea del template si existe, sino al head.
-    
     head_libs = '''
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
     '''
     
-    # Si existen los viejos, los quitamos.
     html = re.sub(r'<script src=".*?chart\.js.*?"></script>', '', html)
     html = re.sub(r'<script src=".*?chartjs-plugin-datalabels.*?"></script>', '', html)
-    
     html = html.replace('<head>', f'<head>{head_libs}')
 
     # 2. Contenedores de Tablas
@@ -294,7 +312,6 @@ def main():
             sel = "selected" if f"c{i}" == default_key else ""
             opts += f'<option value="c{i}" {sel}>Comuna {i}</option>'
         
-        # Opcion Total (Default si se pide o si era resto)
         sel_total = "selected" if default_key in ["total", "resto"] else ""
         opts += f'<option value="total" {sel_total}>Total Ciudad</option>'
 
@@ -325,15 +342,46 @@ def main():
         flags=re.DOTALL
     )
 
-    # 3. Lógica JS
+    # 3. Gráficos Duales (Comuna 2 y Comuna 14)
+    # Reemplazamos la seccion 2 existente por DOS secciones de graficos.
+    
+    # Helper para crear seccion de grafico
+    def build_chart_section(id_canvas, title):
+        return f'''
+        <section class="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+            <h2 class="text-xl font-bold text-gray-800 mb-6 border-b pb-2">{title}</h2>
+            <div class="relative h-96 w-full">
+                <canvas id="{id_canvas}"></canvas>
+            </div>
+        </section>
+        '''
+    
+    charts_html = f'''
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {build_chart_section('dniChart', "Evolución Semanal de DNI's (Operación Comuna 2)")}
+        {build_chart_section('dniChart14', "Evolución Semanal de DNI's (Operación Comuna 14)")}
+    </div>
+    '''
+
+    # Reemplazamos la antigua seccion de graficos (que era una sola <section>)
+    html = re.sub(
+        r'<!-- SECCION 2: GRAFICOS -->\s*<section.*?</section>',
+        f'<!-- SECCION 2: GRAFICOS -->\n{charts_html}',
+        html,
+        flags=re.DOTALL
+    )
+
+    # 4. Lógica JS
     json_all = json.dumps(all_data)
-    json_chart = json.dumps(chart_json)
+    json_chart_c2 = json.dumps(chart_json_c2)
+    json_chart_c14 = json.dumps(chart_json_c14)
 
     js_logic = f'''
     <script>
         // DATOS GLOBALES
         const allComunaData = {json_all};
-        const chartDataInfo = {json_chart};
+        const chartDataC2 = {json_chart_c2};
+        const chartDataC14 = {json_chart_c14};
 
         // RENDER TABLA
         function renderTable(containerId, key) {{
@@ -362,53 +410,58 @@ def main():
         renderTable('table1', 'c2');
         renderTable('table2', 'total');
 
-        // CHART
-        const ctx = document.getElementById('dniChart').getContext('2d');
-        // Register Plugin explicitly just in case
-        if (typeof ChartDataLabels !== 'undefined') {{
-            Chart.register(ChartDataLabels);
+        // FUNCIÓN CHART GENERICA
+        function initChart(canvasId, dataJson) {{
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            if (typeof ChartDataLabels !== 'undefined') {{
+                Chart.register(ChartDataLabels);
+            }}
+
+            new Chart(ctx, {{
+                type: 'bar',
+                data: dataJson,
+                options: {{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {{
+                        x: {{ stacked: true, grid: {{ display: false }} }},
+                        y: {{ stacked: true, beginAtZero: true }}
+                    }},
+                    plugins: {{
+                        legend: {{ position: 'top' }},
+                        tooltip: {{ mode: 'index', intersect: false }},
+                        datalabels: {{
+                            color: 'white',
+                            font: {{ weight: 'bold', size: 10 }},
+                            formatter: (value) => value > 0 ? value : ''
+                        }}
+                    }}
+                }},
+                plugins: [{{
+                    id: 'totalLabels',
+                    afterDatasetsDraw: (chart) => {{
+                        const ctx = chart.ctx;
+                        chart.data.labels.forEach((label, index) => {{
+                            let total = 0;
+                            chart.data.datasets.forEach(ds => total += ds.data[index]);
+                            if (total > 0) {{
+                                const meta = chart.getDatasetMeta(chart.data.datasets.length - 1);
+                                const x = meta.data[index].x;
+                                const y = meta.data[index].y;
+                                ctx.fillStyle = 'black';
+                                ctx.font = 'bold 11px Inter';
+                                ctx.textAlign = 'center';
+                                ctx.fillText(total, x, y - 5);
+                            }}
+                        }});
+                    }}
+                }}]
+            }});
         }}
 
-        new Chart(ctx, {{
-            type: 'bar',
-            data: chartDataInfo,
-            options: {{
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {{
-                    x: {{ stacked: true, grid: {{ display: false }} }},
-                    y: {{ stacked: true, beginAtZero: true }}
-                }},
-                plugins: {{
-                    legend: {{ position: 'top' }},
-                    tooltip: {{ mode: 'index', intersect: false }},
-                    datalabels: {{
-                        color: 'white',
-                        font: {{ weight: 'bold', size: 10 }},
-                        formatter: (value) => value > 0 ? value : ''
-                    }}
-                }}
-            }},
-            plugins: [{{
-                id: 'totalLabels',
-                afterDatasetsDraw: (chart) => {{
-                    const ctx = chart.ctx;
-                    chart.data.labels.forEach((label, index) => {{
-                        let total = 0;
-                        chart.data.datasets.forEach(ds => total += ds.data[index]);
-                        if (total > 0) {{
-                            const meta = chart.getDatasetMeta(chart.data.datasets.length - 1);
-                            const x = meta.data[index].x;
-                            const y = meta.data[index].y;
-                            ctx.fillStyle = 'black';
-                            ctx.font = 'bold 11px Inter';
-                            ctx.textAlign = 'center';
-                            ctx.fillText(total, x, y - 5);
-                        }}
-                    }});
-                }}
-            }}]
-        }});
+        initChart('dniChart', chartDataC2);
+        initChart('dniChart14', chartDataC14);
+
     </script>
     '''
 
@@ -417,8 +470,8 @@ def main():
 
     # Info Header
     html = re.sub(r'Actualizado: .*?</div>', f'Actualizado: {last_update}</div>', html)
-    if chart_json['labels']:
-        last_week_label = chart_json['labels'][-1]
+    if chart_json_c2['labels']:
+        last_week_label = chart_json_c2['labels'][-1]
         html = re.sub(r'Semana: .*?</div>', f'Semana: {last_week_label}</div>', html)
 
     with open(OUTPUT_HTML_PATH, 'w', encoding='utf-8') as f:
