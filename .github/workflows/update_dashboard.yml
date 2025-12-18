@@ -2,8 +2,8 @@ name: Actualizar Dashboard Semanal
 
 on:
   schedule:
-    # Lunes a las 05:00 AM hora Argentina (08:00 UTC)
-    - cron: '0 8 * * 1'
+    # Diariamente a las 09:30 AM hora Argentina (12:30 UTC)
+    - cron: '30 12 * * *'
   workflow_dispatch: # Botón para ejecutar manualmente para pruebas
 
 permissions:
