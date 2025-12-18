@@ -305,31 +305,82 @@ def main():
     html = re.sub(r'<script src=".*?chartjs-plugin-datalabels.*?"></script>', '', html)
     html = html.replace('<head>', f'<head>{head_libs}')
 
-    # 2. Contenedores de Tablas
+    # 2. Contenedores de Tablas (Multi-Select)
     def build_container_html(container_id, title, default_key):
+        # Generamos las opciones del dropdown (Checkboxes)
+        # Checkeamos el default
         opts = ""
-        for i in range(1, 16):
-            sel = "selected" if f"c{i}" == default_key else ""
-            opts += f'<option value="c{i}" {sel}>Comuna {i}</option>'
+        keys = []
+        labels = []
         
-        sel_total = "selected" if default_key in ["total", "resto"] else ""
-        opts += f'<option value="total" {sel_total}>Total Ciudad</option>'
+        # Opciones Comunas 1-15
+        for i in range(1, 16):
+            key = f"c{i}"
+            is_checked = "checked" if key == default_key else ""
+            keys.append(key)
+            labels.append(f"Comuna {i}")
+            opts += f'''
+            <label class="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                <input type="checkbox" id="{container_id}_chk_{key}"
+                       class="form-checkbox h-4 w-4 text-teal-600 transition duration-150 ease-in-out" 
+                       {is_checked} 
+                       onchange="updateSelection('{container_id}', '{key}', this.checked)">
+                <span class="ml-2 text-gray-700">Comuna {i}</span>
+            </label>
+            '''
+
+        # Opcion Total
+        key_total = "total"
+        is_checked_total = "checked" if key_total == default_key else ""
+        opts += f'''
+            <div class="border-t border-gray-200 my-1"></div>
+            <label class="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer bg-gray-50">
+                <input type="checkbox" id="{container_id}_chk_{key_total}"
+                       class="form-checkbox h-4 w-4 text-teal-600 transition duration-150 ease-in-out" 
+                       {is_checked_total} 
+                       onchange="updateSelection('{container_id}', '{key_total}', this.checked)">
+                <span class="ml-2 text-gray-800 font-bold">Total Ciudad</span>
+            </label>
+        '''
+        
+        # Nombre inicial del boton
+        default_label = f"Comuna {default_key.replace('c','')}" if default_key != 'total' else "Total Ciudad"
 
         return f'''
-            <div class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
-                <div class="bg-teal-600 p-4 text-white font-bold text-lg flex justify-between items-center">
+            <div class="bg-white rounded-xl shadow-lg overflow-visible border border-gray-200 z-10 relative">
+                <div class="bg-teal-600 p-4 text-white font-bold text-lg flex justify-between items-center rounded-t-xl">
                     <span>{title}</span>
-                    <select class="text-xs text-gray-800 p-1 rounded cursor-pointer focus:outline-none" 
-                            onchange="renderTable('{container_id}', this.value)">
-                        {opts}
-                    </select>
+                    
+                    <!-- Custom Dropdown Trigger -->
+                    <div class="relative inline-block text-left w-48">
+                        <div>
+                            <button type="button" 
+                                    onclick="toggleDropdown('dropdown_{container_id}')"
+                                    class="inline-flex justify-between w-full rounded-md border border-teal-500 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none" 
+                                    id="btn_{container_id}">
+                                <span id="label_{container_id}" class="truncate">{default_label}</span>
+                                <svg class="-mr-1 ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Dropdown Menu -->
+                        <div id="dropdown_{container_id}" 
+                             class="hidden absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50 overflow-y-auto max-h-60 origin-top-right">
+                            <div class="py-1" role="menu">
+                                {opts}
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
-                <div class="overflow-x-auto" id="{container_id}"></div>
+                <div class="overflow-x-auto rounded-b-xl" id="{container_id}"></div>
             </div>
         '''
 
     new_section_content = f'''
-        <section class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             {build_container_html('table1', 'Panel Izquierdo', 'c2')}
             {build_container_html('table2', 'Panel Derecho', 'total')}
         </section>
@@ -343,8 +394,6 @@ def main():
     )
 
     # 3. Gráficos Duales (Comuna 2 y Comuna 14)
-    # Reemplazamos la seccion 2 existente por DOS secciones de graficos.
-    
     # Helper para crear seccion de grafico
     def build_chart_section(id_canvas, title):
         return f'''
@@ -363,7 +412,6 @@ def main():
     </div>
     '''
 
-    # Reemplazamos la antigua seccion de graficos (que era una sola <section>)
     html = re.sub(
         r'<!-- SECCION 2: GRAFICOS -->\s*<section.*?</section>',
         f'<!-- SECCION 2: GRAFICOS -->\n{charts_html}',
@@ -382,12 +430,139 @@ def main():
         const allComunaData = {json_all};
         const chartDataC2 = {json_chart_c2};
         const chartDataC14 = {json_chart_c14};
+        
+        // ESTADO DE SELECCION
+        const appState = {{
+            table1: new Set(['c2']),
+            table2: new Set(['total'])
+        }};
+
+        // LOGICA DE AGREGACION
+        function aggregateData(keys) {{
+            if (keys.length === 0) return null;
+            
+            // Si es solo una, retornamos directo
+            if (keys.length === 1) {{
+                const k = keys[0];
+                const d = allComunaData[k];
+                // Ajuste Linea Base: mostrar solo si es C2, C14 o Total
+                const showBase = ['c2', 'c14', 'total'].includes(k);
+                
+                // Clonamos para no mutar el original
+                const rows = d.rows.map(r => ({{
+                    ...r,
+                    base: showBase ? r.base : "-"
+                }}));
+                return {{ weeks: d.weeks, rows: rows }};
+            }}
+
+            // MULTI SELECCION (AGREGAR)
+            const weeks = allComunaData['total'].weeks; // Todas tienen las mismas semanas
+            
+            // Estructura para sumarizar
+            // Indices: 0=Interv Total, 1=Deriv CIS, 2=Llamados, 3=%Contacta, 4=%NoContacta, 5=%SinCubrir
+            // Pero labels pueden variar, usamos indices fijos asumiendo orden constante
+            
+            // Inicializar acumuladores por semana (8 semanas)
+            const acc = {{
+                interv: new Array(8).fill(0),
+                deriv: new Array(8).fill(0),
+                llamados: new Array(8).fill(0), // Total Automatica
+                contacta_count: new Array(8).fill(0),
+                no_contacta_count: new Array(8).fill(0),
+                sin_cubrir_count: new Array(8).fill(0)
+            }};
+
+            keys.forEach(k => {{
+                const d = allComunaData[k];
+                if (!d) return;
+
+                d.rows[0].vals.forEach((v, i) => acc.interv[i] += parseInt(v)); // Interv Total
+                d.rows[1].vals.forEach((v, i) => acc.deriv[i] += parseInt(v));  // Deriv CIS
+                d.rows[2].vals.forEach((v, i) => acc.llamados[i] += parseInt(v)); // Llamados 108 (Total Autom)
+                
+                // Parsers para porcentajes: "XX% (YYY)" -> extact YYY
+                const parseCount = (str) => {{
+                    const m = str.match(/\\((\\d+)\\)/);
+                    return m ? parseInt(m[1]) : 0;
+                }};
+
+                d.rows[3].vals.forEach((v, i) => acc.contacta_count[i] += parseCount(v));
+                d.rows[4].vals.forEach((v, i) => acc.no_contacta_count[i] += parseCount(v));
+                d.rows[5].vals.forEach((v, i) => acc.sin_cubrir_count[i] += parseCount(v));
+            }});
+
+            // Reconstruir Rows
+            const fmtPct = (count, total) => {{
+                if (total === 0) return "0% (0)";
+                const pct = Math.round((count / total) * 100);
+                return `${{pct}}% (${{count}})`;
+            }};
+
+            const rows = [
+                {{ label: 'Intervenciones totales', base: '-', vals: acc.interv }},
+                {{ label: 'Derivaciones CIS', base: '-', vals: acc.deriv }},
+                {{ label: 'Llamados 108', base: '-', vals: acc.llamados }},
+                {{ label: '% Se contacta', base: '-', vals: acc.contacta_count.map((c, i) => fmtPct(c, acc.llamados[i])) }},
+                {{ label: '% No se contacta', base: '-', vals: acc.no_contacta_count.map((c, i) => fmtPct(c, acc.llamados[i])) }},
+                {{ label: '% Sin cubrir', base: '-', vals: acc.sin_cubrir_count.map((c, i) => fmtPct(c, acc.llamados[i])) }}
+            ];
+
+            return {{ weeks: weeks, rows: rows }};
+        }}
+
+        // UI HELPERS
+        function toggleDropdown(id) {{
+            const el = document.getElementById(id);
+            if (el.classList.contains('hidden')) {{
+                // Close others if needed, but simple toggle is enough
+                el.classList.remove('hidden');
+            }} else {{
+                el.classList.add('hidden');
+            }}
+        }}
+
+        // Close dropdowns when clicking outside
+        window.onclick = function(event) {{
+            if (!event.target.closest('.relative.inline-block')) {{
+                document.querySelectorAll('[id^="dropdown_"]').forEach(el => {{
+                    el.classList.add('hidden');
+                }});
+            }}
+        }}
+
+        function updateSelection(containerId, key, isChecked) {{
+            const set = appState[containerId];
+            if (isChecked) {{
+                set.add(key);
+            }} else {{
+                set.delete(key);
+            }}
+            
+            // Actualizar Label Boton
+            const btnLabel = document.getElementById(`label_${{containerId}}`);
+            if (set.size === 0) {{
+                btnLabel.textContent = "Ninguna";
+            }} else if (set.size === 1) {{
+                const k = Array.from(set)[0];
+                btnLabel.textContent = k === 'total' ? 'Total Ciudad' : `Comuna ${{k.replace('c','')}}`;
+            }} else {{
+                btnLabel.textContent = `${{set.size}} Seleccionadas`;
+            }}
+
+            renderTable(containerId);
+        }}
 
         // RENDER TABLA
-        function renderTable(containerId, key) {{
-            const data = allComunaData[key];
-            if (!data) return;
+        function renderTable(containerId) {{
+            const keys = Array.from(appState[containerId]);
+            const data = aggregateData(keys);
             const container = document.getElementById(containerId);
+            
+            if (!data) {{
+                container.innerHTML = '<div class="p-8 text-center text-gray-400">Seleccione al menos una opción</div>';
+                return;
+            }}
             
             let ths = '<th class="p-3 text-left">Indicadores</th><th class="p-3 w-20 bg-teal-800">Línea Base</th>';
             data.weeks.forEach(w => ths += `<th class="p-3 w-24">${{w}}</th>`);
@@ -407,8 +582,9 @@ def main():
             container.innerHTML = `<table class="w-full text-sm text-center"><thead><tr class="bg-teal-700 text-white">${{ths}}</tr></thead><tbody class="divide-y divide-gray-200">${{trs}}</tbody></table>`;
         }}
 
-        renderTable('table1', 'c2');
-        renderTable('table2', 'total');
+        // INIT
+        renderTable('table1');
+        renderTable('table2');
 
         // FUNCIÓN CHART GENERICA
         function initChart(canvasId, dataJson) {{
@@ -465,10 +641,14 @@ def main():
     </script>
     '''
 
-    # Usamos replace del bloque script final
-    html = re.sub(r'<script>\s*// Datos inyectados desde Python.*?</script>', js_logic, html, flags=re.DOTALL)
-
-    # Info Header
+    # Usamos replace    # Reemplazamos el script
+    # Usamos lambda para evitar que re.sub interprete los backslashes del JS como escapes
+    html = re.sub(
+        r'<script>\s*// Datos inyectados desde Python.*?</script>', 
+        lambda _: js_logic, 
+        html, 
+        flags=re.DOTALL
+    )  # Info Header
     html = re.sub(r'Actualizado: .*?</div>', f'Actualizado: {last_update}</div>', html)
     if chart_json_c2['labels']:
         last_week_label = chart_json_c2['labels'][-1]
