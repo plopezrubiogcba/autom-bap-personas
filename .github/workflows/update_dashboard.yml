@@ -24,7 +24,7 @@ jobs:
 
       - name: Instalar dependencias
         run: |
-          pip install pandas numpy fsspec gspread oauth2client google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client openpyxl parquet pyarrow fastparquet
+          pip install -r requirements.txt
 
       - name: Crear credenciales desde Secretos
         run: |
