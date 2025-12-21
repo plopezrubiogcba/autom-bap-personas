@@ -18,11 +18,14 @@ from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
 # ==========================================
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
-KEY_FILE = 'credentials.json'
-
 def get_drive_service():
     """Autentica y devuelve el servicio de Drive."""
-    creds = service_account.Credentials.from_service_account_file(KEY_FILE, scopes=SCOPES)
+    # Prioridad: Variable de entorno (GitHub Actions) > Archivo local fixed
+    creds_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', 'credentials.json')
+    
+    # Si no existe la variable ni el archivo por defecto, esto fallará, 
+    # pero es el comportamiento esperado si no hay credenciales.
+    creds = service_account.Credentials.from_service_account_file(creds_path, scopes=SCOPES)
     return build('drive', 'v3', credentials=creds)
 
 def download_file_as_bytes(service, file_id):

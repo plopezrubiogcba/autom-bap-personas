@@ -20,15 +20,16 @@ jobs:
       - name: Configurar Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.10'
 
       - name: Instalar dependencias
         run: |
           pip install -r requirements.txt
 
-      - name: Crear credenciales desde Secretos
-        run: |
-          echo "${{ secrets.GCP_SA_KEY }}" > credentials.json
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_jsons: '${{ secrets.GCP_SA_KEY }}'
 
       - name: Ejecutar Generador
         # Asegúrate de que tu script de python se llame EXACTAMENTE así
