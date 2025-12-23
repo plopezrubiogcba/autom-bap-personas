@@ -14,18 +14,27 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
 
 # ==========================================
-# CONFIGURACIÓN Y UTILIDADES DE DRIVE
+# CONFIGURACIÓN Y UTILIDADES DE GOOGLE (DRIVE & BIGQUERY)
 # ==========================================
 
-SCOPES = ['https://www.googleapis.com/auth/drive']
-def get_drive_service():
-    """Autentica y devuelve el servicio de Drive."""
+# Scopes actualizados para incluir BigQuery
+SCOPES = [
+    'https://www.googleapis.com/auth/drive',
+    'https://www.googleapis.com/auth/bigquery'
+]
+
+def get_credentials():
+    """Obtiene las credenciales para usar en Drive y BigQuery."""
     # Prioridad: Variable de entorno (GitHub Actions) > Archivo local fixed
     creds_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', 'credentials.json')
     
-    # Si no existe la variable ni el archivo por defecto, esto fallará, 
-    # pero es el comportamiento esperado si no hay credenciales.
+    # Crea las credenciales con los scopes necesarios
     creds = service_account.Credentials.from_service_account_file(creds_path, scopes=SCOPES)
+    return creds
+
+def get_drive_service():
+    """Autentica y devuelve el servicio de Drive usando las credenciales compartidas."""
+    creds = get_credentials()
     return build('drive', 'v3', credentials=creds)
 
 def download_file_as_bytes(service, file_id):
@@ -39,8 +48,6 @@ def download_file_as_bytes(service, file_id):
         status, done = downloader.next_chunk()
     fh.seek(0)
     return fh.read()
-
-
 
 def download_parquet_as_df(service, file_name, folder_id):
     """Busca y descarga un parquet de Drive a un DataFrame."""
@@ -80,11 +87,30 @@ def upload_df_as_parquet(service, df, file_name, folder_id):
     if files:
         file_id = files[0]['id']
         service.files().update(fileId=file_id, media_body=media).execute()
-        print(f"✅ {file_name} actualizado.")
+        print(f"✅ {file_name} actualizado en Drive.")
     else:
         file_metadata = {'name': file_name, 'parents': [folder_id]}
         service.files().create(body=file_metadata, media_body=media).execute()
-        print(f"✅ {file_name} creado.")
+        print(f"✅ {file_name} creado en Drive.")
+
+def upload_to_bigquery(df, project_id, dataset_id, table_id):
+    """Sube el DataFrame a BigQuery reemplazando la tabla existente."""
+    destination_table = f"{dataset_id}.{table_id}"
+    print(f"⬆️ Iniciando carga a BigQuery: {destination_table} en proyecto {project_id}...")
+    
+    try:
+        creds = get_credentials()
+        # if_exists='replace' es CRÍTICO para mantener la consistencia de tu lógica de históricos
+        df.to_gbq(
+            destination_table, 
+            project_id=project_id, 
+            if_exists='replace',
+            credentials=creds,
+            progress_bar=False
+        )
+        print("✅ Carga a BigQuery exitosa.")
+    except Exception as e:
+        print(f"❌ Error subiendo a BigQuery: {e}")
 
 # ==========================================
 # FUNCIONES DE LIMPIEZA (TU LÓGICA)
@@ -315,16 +341,22 @@ def procesar_datos(excel_content_bytes, folder_id):
     df_actualizado['contacto'] = niveles.apply(lambda x: x[0])
     df_actualizado['brinda_datos'] = niveles.apply(lambda x: x[1])
 
-    # 6. Ajuste Final Brinda Datos
-    # (Aquí va tu lógica compleja de np.where para ajustar 'Brinda datos' si es necesario)
-    
     # ---------------------------------------------------------
-    # GUARDADO FINAL
+    # GUARDADO FINAL (DRIVE Y BIGQUERY)
     # ---------------------------------------------------------
     nombre_limpio = "2025_historico_limpio.parquet"
+    
+    # 1. Subida original a Drive (Mantenemos tu lógica existente)
     upload_df_as_parquet(service, df_actualizado, nombre_limpio, folder_id)
     
+    # 2. Nueva subida a BigQuery
+    PROJECT_ID = 'autom-bap-personas'
+    DATASET_ID = 'tablero_operativo'
+    TABLE_ID = 'historico_limpio'
+    
+    # Usamos la nueva función de carga
+    upload_to_bigquery(df_actualizado, PROJECT_ID, DATASET_ID, TABLE_ID)
+    
     print(f"🎉 Proceso Terminado. Limpio actualizado al día {df_actualizado[col_fecha].max()}")
-
-# ¡ESTA LÍNEA ES LA CLAVE!
+    
     return df_actualizado
