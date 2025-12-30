@@ -349,12 +349,11 @@ def procesar_datos(excel_content_bytes, folder_id):
     # 1. Subida original a Drive (Mantenemos tu lógica existente)
     upload_df_as_parquet(service, df_actualizado, nombre_limpio, folder_id)
     
-    # 2. Nueva subida a BigQuery
-    PROJECT_ID = 'autom-bap-personas'
-    DATASET_ID = 'tablero_operativo'
-    TABLE_ID = 'historico_limpio'
+    # 2. Subida a BigQuery
+    PROJECT_ID = 'autom-bap-personas'   # Tu ID de proyecto
+    DATASET_ID = 'tablero_operativo'    # Tu Dataset
+    TABLE_ID = 'historico_limpio'       # Tu Tabla
     
-    # Usamos la nueva función de carga
     upload_to_bigquery(df_actualizado, PROJECT_ID, DATASET_ID, TABLE_ID)
     
     print(f"🎉 Proceso Terminado. Limpio actualizado al día {df_actualizado[col_fecha].max()}")

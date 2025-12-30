@@ -1,13 +1,15 @@
 import os
 import sys
-# Importamos las funciones necesarias desde tu otro script data_processor.py
+# Asegúrate de importar las funciones correctamente
 from data_processor import get_drive_service, download_file_as_bytes, procesar_datos
 
-# --- CONFIGURACIÓN ---
-# ID de la carpeta en Drive donde se buscan los archivos Excel de entrada.
-# IMPORTANTE: Asegúrate de que este ID sea el correcto donde subes los Excels.
-# Si es la misma carpeta que usaste en dashboard_generator, usa ese ID.
-INPUT_FOLDER_ID = '1q7rGJjb3qCTNcyDUYzpn9v4JveLjsk6t' 
+# --- CONFIGURACIÓN DE CARPETAS (IDs ACTUALIZADOS) ---
+
+# 1. CARPETA DE ENTRADA (01_insumos): Donde están tus .xls semanales
+INPUT_FOLDER_ID = '14kWGqDj-Q_TOl2-F9FqocI9H_SeL_6Ba' 
+
+# 2. CARPETA DE BASE DE DATOS (02_base_datos): Donde vive el parquet y el histórico
+DB_FOLDER_ID = '1q7rGJjb3qCTNcyDUYzpn9v4JveLjsk6t'
 
 def main():
     print("🏁 Iniciando proceso de captura...")
@@ -19,11 +21,17 @@ def main():
         print(f"❌ Error de autenticación: {e}")
         return
 
-    # 2. Buscar el Excel más reciente en la carpeta de entrada
-    # Filtramos por archivos Excel y que no estén en la papelera
-    query = f"'{INPUT_FOLDER_ID}' in parents and mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' and trashed = false"
+    # 2. Buscar el Excel más reciente en la CARPETA DE INSUMOS
+    print(f"🔎 Buscando reportes (.xls / .xlsx) en: {INPUT_FOLDER_ID}...")
     
-    # Ordenamos por fecha de creación descendente para tomar el último
+    # CONSULTA CORREGIDA: Busca tanto formato nuevo (.xlsx) como viejo (.xls)
+    query = (
+        f"'{INPUT_FOLDER_ID}' in parents "
+        "and (mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' "
+        "or mimeType = 'application/vnd.ms-excel') "
+        "and trashed = false"
+    )
+    
     results = service.files().list(
         q=query, 
         orderBy='createdTime desc', 
@@ -34,33 +42,30 @@ def main():
     files = results.get('files', [])
 
     if not files:
-        print("⚠️ No se encontraron archivos Excel en la carpeta especificada.")
+        print("⚠️ No se encontró ningún archivo Excel en '01_insumos'.")
+        print("   -> Verifica que los archivos no estén en la papelera.")
         return
 
     archivo_excel = files[0]
-    file_id = archivo_excel['id']
-    file_name = archivo_excel['name']
-    
-    print(f"📄 Archivo detectado: {file_name} (ID: {file_id})")
+    print(f"📄 Archivo detectado: {archivo_excel['name']} (ID: {archivo_excel['id']})")
 
-    # 3. Descargar el archivo a memoria (bytes)
+    # 3. Descargar el archivo a memoria
     try:
-        excel_bytes = download_file_as_bytes(service, file_id)
-        print("✅ Descarga completada.")
+        excel_bytes = download_file_as_bytes(service, archivo_excel['id'])
+        print("✅ Descarga del Excel completada.")
     except Exception as e:
         print(f"❌ Error descargando archivo: {e}")
         return
 
     # 4. Enviar al Procesador (ETL + BigQuery)
-    # Esto limpiará los datos, creará el parquet y actualizará BigQuery
+    # IMPORTANTE: Pasamos los datos del Excel Y el ID de la carpeta DB para guardar el parquet
     try:
-        procesar_datos(excel_bytes, INPUT_FOLDER_ID)
-        print("🚀 Ciclo completo finalizado con éxito. BigQuery actualizado.")
+        procesar_datos(excel_bytes, DB_FOLDER_ID)
+        print("🚀 Ciclo completo finalizado. BigQuery y Drive actualizados.")
     except Exception as e:
         print(f"❌ Error durante el procesamiento: {e}")
-        # Hacemos raise para que si esto corre en GitHub Actions, marque error rojo
+        # Hacemos raise para que GitHub Actions marque error si falla
         raise e
 
-# Este es el punto de entrada que le faltaba o estaba mal definido
 if __name__ == '__main__':
     main()

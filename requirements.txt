@@ -18,3 +18,4 @@ numpy
 pandas-gbq
 google-cloud-bigquery
 pytz
+xlrd>=2.0.1
