@@ -4,19 +4,19 @@ import datetime
 import json
 import re
 import os
-from data_processor import get_drive_service, download_parquet_as_df
+import pytz # Importante para la hora
 from datetime import datetime
-import pytz
+from data_processor import get_drive_service, download_parquet_as_df
 
 # --- CONFIGURACION ---
-# ID de la carpeta DB
+# Usamos el mismo ID de carpeta DB que en main.py
 FOLDER_ID_DB = '1q7rGJjb3qCTNcyDUYzpn9v4JveLjsk6t'
 FILE_NAME_PARQUET = '2025_historico_limpio.parquet'
 TEMPLATE_HTML_PATH = 'reporte_tablero.html'
 OUTPUT_HTML_PATH = 'reporte_autom_bap.html'
 
 # =============================================================================
-# LOGICA DE NEGOCIO
+# LOGICA DE NEGOCIO (KPIs y Evolución)
 # =============================================================================
 
 def clasificar_contacto(row):
@@ -102,11 +102,10 @@ def calculate_dni_evolution(df_base, target_comuna_id=2):
     return resultados[-8:]
 
 # =============================================================================
-# GENERACION DE HTML INTERACTIVO Y CALCULOS GLOBALES
+# PREPARACION DE DATOS PARA HTML
 # =============================================================================
 
 def get_stats_data_raw(df_base, comuna_filter_func, base_vals):
-    """Devuelve un diccionario con los datos crudos para el frontend."""
     df = comuna_filter_func(df_base).copy()
     
     all_weeks = sorted(df_base['Fecha Inicio'].dt.to_period('W-SUN').dt.start_time.unique())[-8:]
@@ -161,21 +160,30 @@ def get_stats_data_raw(df_base, comuna_filter_func, base_vals):
     return {'weeks': weeks_str, 'rows': rows}
 
 def main():
-    print("🚀 Iniciando Generador de Dashboard Interactivo V2 (Fixed)...")
+    print("🚀 Iniciando Generador de Dashboard...")
     
+    # 1. Obtener la hora Argentina AHORA MISMO
+    # Esto es mucho más seguro que hacer reemplazos raros después
+    try:
+        zona_arg = pytz.timezone('America/Argentina/Buenos_Aires')
+        fecha_hora_arg = datetime.now(zona_arg)
+        last_update_str = fecha_hora_arg.strftime("%d/%m/%Y %H:%M")
+        print(f"🕒 Hora Argentina detectada: {last_update_str}")
+    except Exception as e:
+        print(f"⚠️ Error con pytz, usando hora local servidor: {e}")
+        last_update_str = datetime.now().strftime("%d/%m/%Y %H:%M")
+
     service = get_drive_service()
     print(f"⬇️ Descargando {FILE_NAME_PARQUET}...")
     df = download_parquet_as_df(service, FILE_NAME_PARQUET, FOLDER_ID_DB)
     
-    if df.empty: return
+    if df.empty: 
+        print("❌ El dataframe está vacío. Abortando.")
+        return
 
     df['Fecha Inicio'] = pd.to_datetime(df['Fecha Inicio'])
-    
-    # --- CONFIGURACIÓN HORA ARGENTINA ---
-    zona_arg = pytz.timezone('America/Argentina/Buenos_Aires')
-    last_update = datetime.now(zona_arg).strftime("%d/%m/%Y %H:%M")
 
-    print("📊 Calculando datos para TODAS las comunas...")
+    print("📊 Calculando indicadores...")
     
     all_data = {}
     base_dummy = ["-", "-", "-", "-", "-", "-"]
@@ -196,6 +204,7 @@ def main():
     
     all_data['total'] = get_stats_data_raw(df, lambda d: d, base_total)
 
+    # Preparar JSON para Chart.js
     def prepare_chart_json(dni_data_list):
         return {
             "labels": [d["Semana"].strftime("%d %b") for d in dni_data_list],
@@ -206,34 +215,33 @@ def main():
             ]
         }
 
-    print("📈 Calculando evolución DNI Comuna 2...")
     dni_data_c2 = calculate_dni_evolution(df, target_comuna_id=2)
     chart_json_c2 = prepare_chart_json(dni_data_c2)
 
-    print("📈 Calculando evolución DNI Comuna 14...")
     dni_data_c14 = calculate_dni_evolution(df, target_comuna_id=14)
     chart_json_c14 = prepare_chart_json(dni_data_c14)
 
-    print(f"📝 Generando HTML Interactivo...")
+    # Ultima semana para el título
+    last_week_label = "Sin datos"
+    if chart_json_c2['labels']:
+        last_week_label = chart_json_c2['labels'][-1]
+
+    # --- GENERACION DEL HTML ---
+    print(f"📝 Escribiendo HTML...")
     
     with open(TEMPLATE_HTML_PATH, 'r', encoding='utf-8') as f:
         html = f.read()
 
-    # Reemplazos y ajustes visuales
-    html = html.replace("Red BAP", "Red de Atención")
-    html = html.replace("BAP Personas", "Red de Atención")
-
+    # LOGO
     import base64
-    logo_b64 = ""
     logo_path = "logoba-removebg-preview.png"
-    
+    img_tag = '<span class="text-white font-bold text-xl">BA</span>'
     if os.path.exists(logo_path):
         with open(logo_path, "rb") as image_file:
             logo_b64 = base64.b64encode(image_file.read()).decode('utf-8')
             img_tag = f'<img src="data:image/png;base64,{logo_b64}" alt="BA Logo" class="h-16 w-auto object-contain" />'
-    else:
-        img_tag = '<span class="text-white font-bold text-xl">BA</span>'
 
+    # HEADER (Aquí inyectamos la hora DIRECTAMENTE, sin regex complejos después)
     new_header = f'''
     <header class="sticky top-0 z-50 flex w-full h-24 bg-[#1E2B37] font-sans shadow-md">
         <div class="flex-grow bg-gradient-to-r from-[#8BE3D9] to-[#80E0D6] rounded-tr-[3rem] flex mr-4 relative items-center">
@@ -243,8 +251,8 @@ def main():
                  </h1>
                  <div class="hidden sm:flex items-center space-x-4 border-l border-gray-400 pl-4 h-1/2">
                      <div class="flex flex-col text-xs font-semibold text-gray-800">
-                          <div>Actualizado: 01/01/2000 00:00</div>
-                          <div class="text-gray-600">Semana: 01 Jan</div>
+                          <div>Actualizado: {last_update_str}</div>
+                          <div class="text-gray-600">Semana: {last_week_label}</div>
                      </div>
                  </div>
             </div>
@@ -254,8 +262,11 @@ def main():
         </div>
     </header>
     '''
+    
+    # Reemplazo robusto del Header
     html = re.sub(r'<header.*?</header>', new_header, html, flags=re.DOTALL)
 
+    # Reemplazo de Scripts (ChartJS)
     head_libs = '''
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
@@ -264,38 +275,20 @@ def main():
     html = re.sub(r'<script src=".*?chartjs-plugin-datalabels.*?"></script>', '', html)
     html = html.replace('<head>', f'<head>{head_libs}')
 
+    # Helpers para construir los bloques de Tablas y Gráficos
     def build_container_html(container_id, title, default_key):
+        default_label = f"Comuna {default_key.replace('c','')}" if default_key != 'total' else "Total Ciudad"
+        
+        # Opciones
         opts = ""
-        keys = []
-        labels = []
         for i in range(1, 16):
             key = f"c{i}"
-            is_checked = "checked" if key == default_key else ""
-            keys.append(key)
-            labels.append(f"Comuna {i}")
-            opts += f'''
-            <label class="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                <input type="checkbox" id="{container_id}_chk_{key}"
-                       class="form-checkbox h-4 w-4 text-teal-600 transition duration-150 ease-in-out" 
-                       {is_checked} 
-                       onchange="updateSelection('{container_id}', '{key}', this.checked)">
-                <span class="ml-2 text-gray-700">Comuna {i}</span>
-            </label>
-            '''
-
+            checked = "checked" if key == default_key else ""
+            opts += f'''<label class="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer"><input type="checkbox" id="{container_id}_chk_{key}" class="form-checkbox h-4 w-4 text-teal-600" {checked} onchange="updateSelection('{container_id}', '{key}', this.checked)"><span class="ml-2 text-gray-700">Comuna {i}</span></label>'''
+        
         key_total = "total"
-        is_checked_total = "checked" if key_total == default_key else ""
-        opts += f'''
-            <div class="border-t border-gray-200 my-1"></div>
-            <label class="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer bg-gray-50">
-                <input type="checkbox" id="{container_id}_chk_{key_total}"
-                       class="form-checkbox h-4 w-4 text-teal-600 transition duration-150 ease-in-out" 
-                       {is_checked_total} 
-                       onchange="updateSelection('{container_id}', '{key_total}', this.checked)">
-                <span class="ml-2 text-gray-800 font-bold">Total Ciudad</span>
-            </label>
-        '''
-        default_label = f"Comuna {default_key.replace('c','')}" if default_key != 'total' else "Total Ciudad"
+        checked_total = "checked" if key_total == default_key else ""
+        opts += f'''<div class="border-t border-gray-200 my-1"></div><label class="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer bg-gray-50"><input type="checkbox" id="{container_id}_chk_{key_total}" class="form-checkbox h-4 w-4 text-teal-600" {checked_total} onchange="updateSelection('{container_id}', '{key_total}', this.checked)"><span class="ml-2 text-gray-800 font-bold">Total Ciudad</span></label>'''
 
         return f'''
             <div class="bg-white rounded-xl shadow-lg overflow-visible border border-gray-200 z-10 relative">
@@ -303,64 +296,35 @@ def main():
                     <span>{title}</span>
                     <div class="relative inline-block text-left w-48">
                         <div>
-                            <button type="button" 
-                                    onclick="toggleDropdown('dropdown_{container_id}')"
-                                    class="inline-flex justify-between w-full rounded-md border border-teal-500 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none" 
-                                    id="btn_{container_id}">
+                            <button type="button" onclick="toggleDropdown('dropdown_{container_id}')" class="inline-flex justify-between w-full rounded-md border border-teal-500 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none" id="btn_{container_id}">
                                 <span id="label_{container_id}" class="truncate">{default_label}</span>
-                                <svg class="-mr-1 ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                </svg>
+                                <svg class="-mr-1 ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
                             </button>
                         </div>
-                        <div id="dropdown_{container_id}" 
-                             class="hidden absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50 overflow-y-auto max-h-60 origin-top-right">
-                            <div class="py-1" role="menu">
-                                {opts}
-                            </div>
-                        </div>
+                        <div id="dropdown_{container_id}" class="hidden absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50 overflow-y-auto max-h-60 origin-top-right"><div class="py-1">{opts}</div></div>
                     </div>
                 </div>
                 <div class="overflow-x-auto rounded-b-xl" id="{container_id}"></div>
             </div>
         '''
 
-    new_section_content = f'''
-        <section class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            {build_container_html('table1', 'Panel Izquierdo', 'c2')}
-            {build_container_html('table2', 'Panel Derecho', 'total')}
-        </section>
-    '''
+    def build_chart_section(id_canvas, title):
+        return f'''<section class="bg-white rounded-xl shadow-lg p-6 border border-gray-200"><h2 class="text-xl font-bold text-gray-800 mb-6 border-b pb-2">{title}</h2><div class="relative h-96 w-full"><canvas id="{id_canvas}"></canvas></div></section>'''
+
+    # Inyecciones HTML
     html = re.sub(
         r'\s*<section.*?>(.*?)</section>', 
-        f'\n{new_section_content}', 
-        html, 
-        flags=re.DOTALL
+        f'\n<section class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">{build_container_html("table1", "Panel Izquierdo", "c2")}{build_container_html("table2", "Panel Derecho", "total")}</section>', 
+        html, flags=re.DOTALL
     )
-
-    def build_chart_section(id_canvas, title):
-        return f'''
-        <section class="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-            <h2 class="text-xl font-bold text-gray-800 mb-6 border-b pb-2">{title}</h2>
-            <div class="relative h-96 w-full">
-                <canvas id="{id_canvas}"></canvas>
-            </div>
-        </section>
-        '''
     
-    charts_html = f'''
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {build_chart_section('dniChart', "Evolución Semanal de DNI's (Operación Comuna 2)")}
-        {build_chart_section('dniChart14', "Evolución Semanal de DNI's (Operación Comuna 14)")}
-    </div>
-    '''
     html = re.sub(
         r'\s*<section.*?</section>',
-        f'\n{charts_html}',
-        html,
-        flags=re.DOTALL
+        f'\n<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">{build_chart_section("dniChart", "Evolución Semanal de DNI\'s (Operación Comuna 2)")}{build_chart_section("dniChart14", "Evolución Semanal de DNI\'s (Operación Comuna 14)")}</div>',
+        html, flags=re.DOTALL
     )
 
+    # Inyeccion JS (Lógica Frontend)
     json_all = json.dumps(all_data)
     json_chart_c2 = json.dumps(chart_json_c2)
     json_chart_c14 = json.dumps(chart_json_c14)
@@ -371,10 +335,7 @@ def main():
         const chartDataC2 = {json_chart_c2};
         const chartDataC14 = {json_chart_c14};
         
-        const appState = {{
-            table1: new Set(['c2']),
-            table2: new Set(['total'])
-        }};
+        const appState = {{ table1: new Set(['c2']), table2: new Set(['total']) }};
 
         function aggregateData(keys) {{
             if (keys.length === 0) return null;
@@ -382,22 +343,11 @@ def main():
                 const k = keys[0];
                 const d = allComunaData[k];
                 const showBase = ['c2', 'c14', 'total'].includes(k);
-                const rows = d.rows.map(r => ({{
-                    ...r,
-                    base: showBase ? r.base : "-"
-                }}));
+                const rows = d.rows.map(r => ({{ ...r, base: showBase ? r.base : "-" }}));
                 return {{ weeks: d.weeks, rows: rows }};
             }}
-
             const weeks = allComunaData['total'].weeks;
-            const acc = {{
-                interv: new Array(8).fill(0),
-                deriv: new Array(8).fill(0),
-                llamados: new Array(8).fill(0),
-                contacta_count: new Array(8).fill(0),
-                no_contacta_count: new Array(8).fill(0),
-                sin_cubrir_count: new Array(8).fill(0)
-            }};
+            const acc = {{ interv: new Array(8).fill(0), deriv: new Array(8).fill(0), llamados: new Array(8).fill(0), contacta_count: new Array(8).fill(0), no_contacta_count: new Array(8).fill(0), sin_cubrir_count: new Array(8).fill(0) }};
 
             keys.forEach(k => {{
                 const d = allComunaData[k];
@@ -405,21 +355,13 @@ def main():
                 d.rows[0].vals.forEach((v, i) => acc.interv[i] += parseInt(v));
                 d.rows[1].vals.forEach((v, i) => acc.deriv[i] += parseInt(v));
                 d.rows[2].vals.forEach((v, i) => acc.llamados[i] += parseInt(v));
-                const parseCount = (str) => {{
-                    const m = str.match(/\\((\\d+)\\)/);
-                    return m ? parseInt(m[1]) : 0;
-                }};
+                const parseCount = (str) => {{ const m = str.match(/\\((\\d+)\\)/); return m ? parseInt(m[1]) : 0; }};
                 d.rows[3].vals.forEach((v, i) => acc.contacta_count[i] += parseCount(v));
                 d.rows[4].vals.forEach((v, i) => acc.no_contacta_count[i] += parseCount(v));
                 d.rows[5].vals.forEach((v, i) => acc.sin_cubrir_count[i] += parseCount(v));
             }});
 
-            const fmtPct = (count, total) => {{
-                if (total === 0) return "0% (0)";
-                const pct = Math.round((count / total) * 100);
-                return `${{pct}}% (${{count}})`;
-            }};
-
+            const fmtPct = (count, total) => {{ if (total === 0) return "0% (0)"; return `${{Math.round((count/total)*100)}}% (${{count}})`; }};
             const rows = [
                 {{ label: 'Intervenciones totales', base: '-', vals: acc.interv }},
                 {{ label: 'Derivaciones CIS', base: '-', vals: acc.deriv }},
@@ -431,130 +373,66 @@ def main():
             return {{ weeks: weeks, rows: rows }};
         }}
 
-        function toggleDropdown(id) {{
-            const el = document.getElementById(id);
-            el.classList.toggle('hidden');
-        }}
-
-        window.onclick = function(event) {{
-            if (!event.target.closest('.relative.inline-block')) {{
-                document.querySelectorAll('[id^="dropdown_"]').forEach(el => {{
-                    el.classList.add('hidden');
-                }});
-            }}
-        }}
+        function toggleDropdown(id) {{ document.getElementById(id).classList.toggle('hidden'); }}
+        window.onclick = function(e) {{ if (!e.target.closest('.relative.inline-block')) document.querySelectorAll('[id^="dropdown_"]').forEach(el => el.classList.add('hidden')); }}
 
         function updateSelection(containerId, key, isChecked) {{
             const set = appState[containerId];
             if (isChecked) set.add(key); else set.delete(key);
-            
             const btnLabel = document.getElementById(`label_${{containerId}}`);
             if (set.size === 0) btnLabel.textContent = "Ninguna";
-            else if (set.size === 1) {{
-                const k = Array.from(set)[0];
-                btnLabel.textContent = k === 'total' ? 'Total Ciudad' : `Comuna ${{k.replace('c','')}}`;
-            }} else btnLabel.textContent = `${{set.size}} Seleccionadas`;
-
+            else if (set.size === 1) {{ const k = Array.from(set)[0]; btnLabel.textContent = k === 'total' ? 'Total Ciudad' : `Comuna ${{k.replace('c','')}}`; }}
+            else btnLabel.textContent = `${{set.size}} Seleccionadas`;
             renderTable(containerId);
         }}
 
         function renderTable(containerId) {{
-            const keys = Array.from(appState[containerId]);
-            const data = aggregateData(keys);
+            const data = aggregateData(Array.from(appState[containerId]));
             const container = document.getElementById(containerId);
-            
-            if (!data) {{
-                container.innerHTML = '<div class="p-8 text-center text-gray-400">Seleccione al menos una opción</div>';
-                return;
-            }}
-            
+            if (!data) {{ container.innerHTML = '<div class="p-8 text-center text-gray-400">Seleccione al menos una opción</div>'; return; }}
             let ths = '<th class="p-3 text-left">Indicadores</th><th class="p-3 w-20 bg-teal-800">Línea Base</th>';
             data.weeks.forEach(w => ths += `<th class="p-3 w-24">${{w}}</th>`);
-            
             let trs = '';
-            data.rows.forEach((r, idx) => {{
-                let tds = '';
-                r.vals.forEach(v => tds += `<td class="p-3 text-gray-800">${{v}}</td>`);
-                trs += `
-                    <tr class="hover:bg-yellow-50 transition-colors">
-                        <td class="p-3 text-left font-semibold text-gray-700 bg-gray-50 sticky left-0">${{r.label}}</td>
-                        <td class="p-3 font-bold text-gray-600 bg-gray-100 border-r border-gray-300">${{r.base}}</td>
-                        ${{tds}}
-                    </tr>`;
+            data.rows.forEach(r => {{
+                let tds = ''; r.vals.forEach(v => tds += `<td class="p-3 text-gray-800">${{v}}</td>`);
+                trs += `<tr class="hover:bg-yellow-50 transition-colors"><td class="p-3 text-left font-semibold text-gray-700 bg-gray-50 sticky left-0">${{r.label}}</td><td class="p-3 font-bold text-gray-600 bg-gray-100 border-r border-gray-300">${{r.base}}</td>${{tds}}</tr>`;
             }});
             container.innerHTML = `<table class="w-full text-sm text-center"><thead><tr class="bg-teal-700 text-white">${{ths}}</tr></thead><tbody class="divide-y divide-gray-200">${{trs}}</tbody></table>`;
         }}
-
-        renderTable('table1');
-        renderTable('table2');
+        renderTable('table1'); renderTable('table2');
 
         function initChart(canvasId, dataJson) {{
-            const ctx = document.getElementById(canvasId).getContext('2d');
             if (typeof ChartDataLabels !== 'undefined') Chart.register(ChartDataLabels);
-
-            new Chart(ctx, {{
-                type: 'bar',
-                data: dataJson,
-                options: {{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {{
-                        x: {{ stacked: true, grid: {{ display: false }} }},
-                        y: {{ stacked: true, beginAtZero: true }}
-                    }},
-                    plugins: {{
-                        legend: {{ position: 'top' }},
-                        tooltip: {{ mode: 'index', intersect: false }},
-                        datalabels: {{
-                            color: 'white',
-                            font: {{ weight: 'bold', size: 10 }},
-                            formatter: (value) => value > 0 ? value : ''
+            new Chart(document.getElementById(canvasId).getContext('2d'), {{
+                type: 'bar', data: dataJson,
+                options: {{ responsive: true, maintainAspectRatio: false, scales: {{ x: {{ stacked: true, grid: {{ display: false }} }}, y: {{ stacked: true, beginAtZero: true }} }}, plugins: {{ legend: {{ position: 'top' }}, tooltip: {{ mode: 'index', intersect: false }}, datalabels: {{ color: 'white', font: {{ weight: 'bold', size: 10 }}, formatter: v => v > 0 ? v : '' }} }} }},
+                plugins: [{{ id: 'totalLabels', afterDatasetsDraw: (chart) => {{
+                    const ctx = chart.ctx;
+                    chart.data.labels.forEach((_, i) => {{
+                        let total = 0; chart.data.datasets.forEach(ds => total += ds.data[i]);
+                        if (total > 0) {{
+                            const meta = chart.getDatasetMeta(chart.data.datasets.length - 1);
+                            ctx.fillStyle = 'black'; ctx.font = 'bold 11px Inter'; ctx.textAlign = 'center';
+                            ctx.fillText(total, meta.data[i].x, meta.data[i].y - 5);
                         }}
-                    }}
-                }},
-                plugins: [{{
-                    id: 'totalLabels',
-                    afterDatasetsDraw: (chart) => {{
-                        const ctx = chart.ctx;
-                        chart.data.labels.forEach((label, index) => {{
-                            let total = 0;
-                            chart.data.datasets.forEach(ds => total += ds.data[index]);
-                            if (total > 0) {{
-                                const meta = chart.getDatasetMeta(chart.data.datasets.length - 1);
-                                const x = meta.data[index].x;
-                                const y = meta.data[index].y;
-                                ctx.fillStyle = 'black';
-                                ctx.font = 'bold 11px Inter';
-                                ctx.textAlign = 'center';
-                                ctx.fillText(total, x, y - 5);
-                            }}
-                        }});
-                    }}
-                }}]
+                    }});
+                }} }}]
             }});
         }}
-
-        initChart('dniChart', chartDataC2);
-        initChart('dniChart14', chartDataC14);
+        initChart('dniChart', chartDataC2); initChart('dniChart14', chartDataC14);
     </script>
     '''
-
+    
     html = re.sub(
         r'<script>\s*// Datos inyectados desde Python.*?</script>', 
         lambda _: js_logic, 
-        html, 
-        flags=re.DOTALL
+        html, flags=re.DOTALL
     )
-    
-    html = re.sub(r'Actualizado: .*?</div>', f'Actualizado: {last_update}</div>', html)
-    if chart_json_c2['labels']:
-        last_week_label = chart_json_c2['labels'][-1]
-        html = re.sub(r'Semana: .*?</div>', f'Semana: {last_week_label}</div>', html)
 
     with open(OUTPUT_HTML_PATH, 'w', encoding='utf-8') as f:
         f.write(html)
     
-    print("✅ Dashboard Interactivo generado.")
+    print("✅ Dashboard generado exitosamente.")
 
 if __name__ == '__main__':
     main()
