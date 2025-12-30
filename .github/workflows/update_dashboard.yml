@@ -4,7 +4,7 @@ on:
   schedule:
     # Diariamente a las 09:30 AM hora Argentina (12:30 UTC)
     - cron: '30 12 * * *'
-  workflow_dispatch: # Botón para ejecutar manualmente para pruebas
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -31,8 +31,12 @@ jobs:
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
+      # --- NUEVO PASO: EJECUTAR LA CARGA DE DATOS ---
+      - name: Procesar Datos (ETL + BigQuery)
+        run: python main.py
+      # ----------------------------------------------
+
       - name: Ejecutar Generador
-        # Asegúrate de que tu script de python se llame EXACTAMENTE así
         run: python dashboard_generator.py
 
       - name: Guardar cambios (Commit & Push)

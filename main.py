@@ -52,3 +52,6 @@ def entry_point(request):
         print(error_msg)
         traceback.print_exc() # Imprime el error completo en los logs de Google Cloud
         return error_msg, 500
+
+if __name__ == '__main__':
+    main()

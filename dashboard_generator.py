@@ -5,6 +5,8 @@ import json
 import re
 import os
 from data_processor import get_drive_service, download_parquet_as_df
+from datetime import datetime
+import pytz
 
 # --- CONFIGURACION ---
 # ID de la carpeta DB (tomado de main.py)
@@ -182,7 +184,11 @@ def main():
     if df.empty: return
 
     df['Fecha Inicio'] = pd.to_datetime(df['Fecha Inicio'])
-    last_update = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
+    
+    # --- CONFIGURACIÓN DE HORA ARGENTINA ---
+    zona_arg = pytz.timezone('America/Argentina/Buenos_Aires')
+    fecha_hora_arg = datetime.now(zona_arg)
+    last_update = fecha_hora_arg.strftime("%d/%m/%Y %H:%M")
 
     print("📊 Calculando datos para TODAS las comunas...")
     
@@ -261,29 +267,23 @@ def main():
     # Reemplazamos todo el bloque <header>...</header> del template original
     new_header = f'''
     <header class="sticky top-0 z-50 flex w-full h-24 bg-[#1E2B37] font-sans shadow-md">
-        <!-- Teal Bar Wrapper -->
         <div class="flex-grow bg-gradient-to-r from-[#8BE3D9] to-[#80E0D6] rounded-tr-[3rem] flex mr-4 relative items-center">
             
-            <!-- Yellow Section (Tab) -->
             <div class="bg-ba-yellow h-full w-full lg:w-1/2 rounded-tr-[3rem] px-8 flex items-center justify-between sm:justify-start sm:space-x-8 relative z-10 shadow-sm">
                  <h1 class="text-xl md:text-2xl font-bold text-ba-grey uppercase tracking-wider leading-tight">
                     INDICADORES CLAVE - RED DE ATENCIÓN
                  </h1>
                  
-                 <!-- Vertical Divider & Date -->
                  <div class="hidden sm:flex items-center space-x-4 border-l border-gray-400 pl-4 h-1/2">
                      <div class="flex flex-col text-xs font-semibold text-gray-800">
-                          <!-- Placeholders que el regex reemplazará abajo -->
                           <div>Actualizado: 01/01/2000 00:00</div>
                           <div class="text-gray-600">Semana: 01 Jan</div>
                      </div>
                  </div>
             </div>
 
-            <!-- Teal Decoration (Empty space to the right of yellow acts as the teal bar) -->
-        </div>
+            </div>
 
-        <!-- Logo Area -->
         <div class="w-24 md:w-32 flex items-center justify-center shrink-0 pr-4">
              {img_tag}
         </div>
@@ -351,7 +351,6 @@ def main():
                 <div class="bg-teal-600 p-4 text-white font-bold text-lg flex justify-between items-center rounded-t-xl">
                     <span>{title}</span>
                     
-                    <!-- Custom Dropdown Trigger -->
                     <div class="relative inline-block text-left w-48">
                         <div>
                             <button type="button" 
@@ -365,7 +364,6 @@ def main():
                             </button>
                         </div>
 
-                        <!-- Dropdown Menu -->
                         <div id="dropdown_{container_id}" 
                              class="hidden absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50 overflow-y-auto max-h-60 origin-top-right">
                             <div class="py-1" role="menu">
@@ -387,8 +385,8 @@ def main():
     '''
     
     html = re.sub(
-        r'<!-- SECCION 1: TABLAS -->\s*<section.*?>(.*?)</section>', 
-        f'<!-- SECCION 1: TABLAS -->\n{new_section_content}', 
+        r'\s*<section.*?>(.*?)</section>', 
+        f'\n{new_section_content}', 
         html, 
         flags=re.DOTALL
     )
@@ -413,8 +411,8 @@ def main():
     '''
 
     html = re.sub(
-        r'<!-- SECCION 2: GRAFICOS -->\s*<section.*?</section>',
-        f'<!-- SECCION 2: GRAFICOS -->\n{charts_html}',
+        r'\s*<section.*?</section>',
+        f'\n{charts_html}',
         html,
         flags=re.DOTALL
     )
