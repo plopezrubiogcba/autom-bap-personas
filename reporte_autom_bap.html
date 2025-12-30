@@ -35,19 +35,29 @@
     <!-- Header -->
     
     <header class="sticky top-0 z-50 flex w-full h-24 bg-[#1E2B37] font-sans shadow-md">
+        <!-- Teal Bar Wrapper -->
         <div class="flex-grow bg-gradient-to-r from-[#8BE3D9] to-[#80E0D6] rounded-tr-[3rem] flex mr-4 relative items-center">
+            
+            <!-- Yellow Section (Tab) -->
             <div class="bg-ba-yellow h-full w-full lg:w-1/2 rounded-tr-[3rem] px-8 flex items-center justify-between sm:justify-start sm:space-x-8 relative z-10 shadow-sm">
                  <h1 class="text-xl md:text-2xl font-bold text-ba-grey uppercase tracking-wider leading-tight">
                     INDICADORES CLAVE - RED DE ATENCIÓN
                  </h1>
+                 
+                 <!-- Vertical Divider & Date -->
                  <div class="hidden sm:flex items-center space-x-4 border-l border-gray-400 pl-4 h-1/2">
                      <div class="flex flex-col text-xs font-semibold text-gray-800">
-                          <div>Actualizado: 30/12/2025 12:55</div>
+                          <!-- Placeholders que el regex reemplazará abajo -->
+                          <div>Actualizado: 30/12/2025 12:59</div>
                           <div class="text-gray-600">Semana: 29 Dec</div>
                      </div>
                  </div>
             </div>
+
+            <!-- Teal Decoration (Empty space to the right of yellow acts as the teal bar) -->
         </div>
+
+        <!-- Logo Area -->
         <div class="w-24 md:w-32 flex items-center justify-center shrink-0 pr-4">
              <img src="data:image/png;base64,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" alt="BA Logo" class="h-16 w-auto object-contain" />
         </div>
@@ -57,108 +67,149 @@
     <main class="container mx-auto p-6 space-y-12">
 
         <!-- SECCION 1: TABLAS -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-8"><section class="bg-white rounded-xl shadow-lg p-6 border border-gray-200"><h2 class="text-xl font-bold text-gray-800 mb-6 border-b pb-2">Evolución Semanal de DNI's (Operación Comuna 2)</h2><div class="relative h-96 w-full"><canvas id="dniChart"></canvas></div></section><section class="bg-white rounded-xl shadow-lg p-6 border border-gray-200"><h2 class="text-xl font-bold text-gray-800 mb-6 border-b pb-2">Evolución Semanal de DNI's (Operación Comuna 14)</h2><div class="relative h-96 w-full"><canvas id="dniChart14"></canvas></div></section></div>
+
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            <div class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+                <div class="bg-teal-600 p-4 text-white font-bold text-lg flex justify-between items-center">
+                    <span>Panel Izquierdo</span>
+                    <select class="text-xs text-gray-800 p-1 rounded cursor-pointer focus:outline-none" 
+                            onchange="renderTable('table1', this.value)">
+                        <option value="c1" >Comuna 1</option><option value="c2" selected>Comuna 2</option><option value="c3" >Comuna 3</option><option value="c4" >Comuna 4</option><option value="c5" >Comuna 5</option><option value="c6" >Comuna 6</option><option value="c7" >Comuna 7</option><option value="c8" >Comuna 8</option><option value="c9" >Comuna 9</option><option value="c10" >Comuna 10</option><option value="c11" >Comuna 11</option><option value="c12" >Comuna 12</option><option value="c13" >Comuna 13</option><option value="c14" >Comuna 14</option><option value="c15" >Comuna 15</option><option value="total" >Total Ciudad</option>
+                    </select>
+                </div>
+                <div class="overflow-x-auto" id="table1"></div>
+            </div>
+        
+            
+            <div class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+                <div class="bg-teal-600 p-4 text-white font-bold text-lg flex justify-between items-center">
+                    <span>Panel Derecho</span>
+                    <select class="text-xs text-gray-800 p-1 rounded cursor-pointer focus:outline-none" 
+                            onchange="renderTable('table2', this.value)">
+                        <option value="c1" >Comuna 1</option><option value="c2" >Comuna 2</option><option value="c3" >Comuna 3</option><option value="c4" >Comuna 4</option><option value="c5" >Comuna 5</option><option value="c6" >Comuna 6</option><option value="c7" >Comuna 7</option><option value="c8" >Comuna 8</option><option value="c9" >Comuna 9</option><option value="c10" >Comuna 10</option><option value="c11" >Comuna 11</option><option value="c12" >Comuna 12</option><option value="c13" >Comuna 13</option><option value="c14" >Comuna 14</option><option value="c15" >Comuna 15</option><option value="total" selected>Total Ciudad</option>
+                    </select>
+                </div>
+                <div class="overflow-x-auto" id="table2"></div>
+            </div>
+        
+        </section>
+    
 
         <!-- SECCION 2: GRAFICOS -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-8"><section class="bg-white rounded-xl shadow-lg p-6 border border-gray-200"><h2 class="text-xl font-bold text-gray-800 mb-6 border-b pb-2">Evolución Semanal de DNI's (Operación Comuna 2)</h2><div class="relative h-96 w-full"><canvas id="dniChart"></canvas></div></section><section class="bg-white rounded-xl shadow-lg p-6 border border-gray-200"><h2 class="text-xl font-bold text-gray-800 mb-6 border-b pb-2">Evolución Semanal de DNI's (Operación Comuna 14)</h2><div class="relative h-96 w-full"><canvas id="dniChart14"></canvas></div></section></div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        <section class="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+            <h2 class="text-xl font-bold text-gray-800 mb-6 border-b pb-2">Evolución Semanal de DNI's (Operación Comuna 2)</h2>
+            <div class="relative h-96 w-full">
+                <canvas id="dniChart"></canvas>
+            </div>
+        </section>
+        
+        
+        <section class="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+            <h2 class="text-xl font-bold text-gray-800 mb-6 border-b pb-2">Evolución Semanal de DNI's (Operación Comuna 14)</h2>
+            <div class="relative h-96 w-full">
+                <canvas id="dniChart14"></canvas>
+            </div>
+        </section>
+        
+    </div>
+    
 
     </main>
 
     <footer class="text-center p-8 text-gray-500 text-sm">
-        <p>Gobierno de la Ciudad de Buenos Aires - BAP Personas</p>
+        <p>Gobierno de la Ciudad de Buenos Aires - Red de Atención</p>
     </footer>
 
     
     <script>
+        // DATOS GLOBALES
         const allComunaData = {"c1": {"weeks": ["10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec", "22 Dec", "29 Dec"], "rows": [{"label": "Intervenciones totales", "base": "-", "vals": [1656, 1571, 1554, 1280, 1440, 1153, 1120, 200]}, {"label": "Derivaciones CIS", "base": "-", "vals": [195, 182, 183, 151, 180, 165, 172, 18]}, {"label": "Llamados 108", "base": "-", "vals": [883, 797, 850, 782, 881, 753, 659, 138]}, {"label": "% Se contacta", "base": "-", "vals": ["31% (270)", "28% (227)", "31% (261)", "27% (213)", "39% (342)", "30% (223)", "38% (249)", "42% (58)"]}, {"label": "% No se contacta", "base": "-", "vals": ["31% (273)", "27% (212)", "30% (254)", "27% (210)", "34% (303)", "35% (262)", "34% (223)", "13% (18)"]}, {"label": "% Sin cubrir", "base": "-", "vals": ["39% (340)", "45% (358)", "39% (335)", "46% (359)", "27% (236)", "36% (268)", "28% (187)", "45% (62)"]}]}, "c2": {"weeks": ["10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec", "22 Dec", "29 Dec"], "rows": [{"label": "Intervenciones totales", "base": "1364", "vals": [1718, 1630, 1553, 1212, 1182, 928, 815, 115]}, {"label": "Derivaciones CIS", "base": "92", "vals": [108, 109, 70, 116, 110, 112, 68, 7]}, {"label": "Llamados 108", "base": "247", "vals": [265, 250, 257, 292, 334, 275, 222, 36]}, {"label": "% Se contacta", "base": "151", "vals": ["55% (146)", "59% (148)", "64% (165)", "67% (197)", "65% (218)", "57% (156)", "60% (133)", "61% (22)"]}, {"label": "% No se contacta", "base": "90", "vals": ["43% (114)", "40% (100)", "34% (88)", "32% (94)", "34% (113)", "42% (115)", "40% (88)", "39% (14)"]}, {"label": "% Sin cubrir", "base": "6", "vals": ["2% (5)", "1% (2)", "2% (4)", "0% (1)", "1% (3)", "1% (4)", "0% (1)", "0% (0)"]}]}, "c3": {"weeks": ["10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec", "22 Dec", "29 Dec"], "rows": [{"label": "Intervenciones totales", "base": "-", "vals": [451, 513, 533, 501, 493, 450, 443, 53]}, {"label": "Derivaciones CIS", "base": "-", "vals": [40, 60, 46, 29, 58, 61, 46, 3]}, {"label": "Llamados 108", "base": "-", "vals": [278, 329, 334, 308, 315, 293, 283, 31]}, {"label": "% Se contacta", "base": "-", "vals": ["23% (65)", "27% (90)", "33% (109)", "28% (85)", "45% (143)", "28% (83)", "30% (84)", "13% (4)"]}, {"label": "% No se contacta", "base": "-", "vals": ["23% (65)", "19% (64)", "18% (60)", "18% (54)", "22% (70)", "21% (62)", "36% (103)", "3% (1)"]}, {"label": "% Sin cubrir", "base": "-", "vals": ["53% (148)", "53% (175)", "49% (165)", "55% (169)", "32% (102)", "51% (148)", "34% (96)", "84% (26)"]}]}, "c4": {"weeks": ["10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec", "22 Dec", "29 Dec"], "rows": [{"label": "Intervenciones totales", "base": "-", "vals": [367, 408, 395, 357, 407, 376, 313, 65]}, {"label": "Derivaciones CIS", "base": "-", "vals": [24, 30, 42, 33, 50, 46, 37, 0]}, {"label": "Llamados 108", "base": "-", "vals": [312, 326, 289, 298, 339, 314, 274, 52]}, {"label": "% Se contacta", "base": "-", "vals": ["24% (74)", "22% (72)", "34% (97)", "36% (106)", "41% (139)", "31% (98)", "35% (96)", "12% (6)"]}, {"label": "% No se contacta", "base": "-", "vals": ["23% (72)", "21% (69)", "24% (68)", "17% (50)", "32% (107)", "23% (72)", "22% (61)", "6% (3)"]}, {"label": "% Sin cubrir", "base": "-", "vals": ["53% (166)", "57% (185)", "43% (124)", "48% (142)", "27% (93)", "46% (144)", "43% (117)", "83% (43)"]}]}, "c5": {"weeks": ["10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec", "22 Dec", "29 Dec"], "rows": [{"label": "Intervenciones totales", "base": "-", "vals": [144, 163, 140, 131, 145, 136, 149, 21]}, {"label": "Derivaciones CIS", "base": "-", "vals": [2, 5, 2, 10, 2, 3, 4, 2]}, {"label": "Llamados 108", "base": "-", "vals": [126, 135, 109, 117, 128, 109, 116, 17]}, {"label": "% Se contacta", "base": "-", "vals": ["10% (13)", "10% (13)", "15% (16)", "15% (18)", "18% (23)", "18% (20)", "17% (20)", "18% (3)"]}, {"label": "% No se contacta", "base": "-", "vals": ["18% (23)", "12% (16)", "25% (27)", "9% (11)", "33% (42)", "19% (21)", "25% (29)", "12% (2)"]}, {"label": "% Sin cubrir", "base": "-", "vals": ["71% (90)", "79% (106)", "61% (66)", "75% (88)", "49% (63)", "62% (68)", "58% (67)", "71% (12)"]}]}, "c6": {"weeks": ["10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec", "22 Dec", "29 Dec"], "rows": [{"label": "Intervenciones totales", "base": "-", "vals": [140, 146, 136, 110, 150, 167, 96, 22]}, {"label": "Derivaciones CIS", "base": "-", "vals": [0, 2, 0, 0, 9, 1, 0, 0]}, {"label": "Llamados 108", "base": "-", "vals": [132, 129, 124, 100, 132, 150, 89, 22]}, {"label": "% Se contacta", "base": "-", "vals": ["10% (13)", "8% (10)", "15% (19)", "11% (11)", "27% (36)", "29% (44)", "20% (18)", "14% (3)"]}, {"label": "% No se contacta", "base": "-", "vals": ["20% (27)", "13% (17)", "19% (24)", "12% (12)", "42% (56)", "27% (41)", "35% (31)", "9% (2)"]}, {"label": "% Sin cubrir", "base": "-", "vals": ["70% (92)", "79% (102)", "65% (81)", "77% (77)", "30% (40)", "43% (65)", "45% (40)", "77% (17)"]}]}, "c7": {"weeks": ["10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec", "22 Dec", "29 Dec"], "rows": [{"label": "Intervenciones totales", "base": "-", "vals": [290, 276, 290, 243, 293, 240, 246, 33]}, {"label": "Derivaciones CIS", "base": "-", "vals": [9, 9, 7, 7, 11, 8, 12, 3]}, {"label": "Llamados 108", "base": "-", "vals": [245, 249, 266, 211, 255, 213, 209, 30]}, {"label": "% Se contacta", "base": "-", "vals": ["16% (38)", "16% (39)", "19% (51)", "15% (31)", "29% (73)", "20% (42)", "28% (58)", "23% (7)"]}, {"label": "% No se contacta", "base": "-", "vals": ["20% (50)", "16% (41)", "21% (56)", "19% (40)", "35% (90)", "17% (36)", "23% (48)", "3% (1)"]}, {"label": "% Sin cubrir", "base": "-", "vals": ["64% (157)", "68% (169)", "60% (159)", "66% (140)", "36% (92)", "63% (135)", "49% (103)", "73% (22)"]}]}, "c8": {"weeks": ["10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec", "22 Dec", "29 Dec"], "rows": [{"label": "Intervenciones totales", "base": "-", "vals": [33, 51, 36, 39, 51, 32, 25, 11]}, {"label": "Derivaciones CIS", "base": "-", "vals": [2, 0, 1, 2, 1, 1, 1, 0]}, {"label": "Llamados 108", "base": "-", "vals": [26, 47, 35, 35, 40, 25, 21, 10]}, {"label": "% Se contacta", "base": "-", "vals": ["4% (1)", "40% (19)", "9% (3)", "34% (12)", "30% (12)", "4% (1)", "24% (5)", "30% (3)"]}, {"label": "% No se contacta", "base": "-", "vals": ["23% (6)", "19% (9)", "37% (13)", "11% (4)", "45% (18)", "28% (7)", "38% (8)", "30% (3)"]}, {"label": "% Sin cubrir", "base": "-", "vals": ["73% (19)", "40% (19)", "54% (19)", "54% (19)", "25% (10)", "68% (17)", "38% (8)", "40% (4)"]}]}, "c9": {"weeks": ["10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec", "22 Dec", "29 Dec"], "rows": [{"label": "Intervenciones totales", "base": "-", "vals": [74, 62, 78, 74, 105, 93, 57, 9]}, {"label": "Derivaciones CIS", "base": "-", "vals": [0, 1, 1, 1, 8, 0, 2, 0]}, {"label": "Llamados 108", "base": "-", "vals": [58, 54, 72, 65, 94, 73, 56, 8]}, {"label": "% Se contacta", "base": "-", "vals": ["5% (3)", "2% (1)", "10% (7)", "5% (3)", "35% (33)", "10% (7)", "9% (5)", "0% (0)"]}, {"label": "% No se contacta", "base": "-", "vals": ["24% (14)", "26% (14)", "36% (26)", "26% (17)", "30% (28)", "30% (22)", "36% (20)", "0% (0)"]}, {"label": "% Sin cubrir", "base": "-", "vals": ["71% (41)", "72% (39)", "54% (39)", "69% (45)", "35% (33)", "60% (44)", "55% (31)", "100% (8)"]}]}, "c10": {"weeks": ["10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec", "22 Dec", "29 Dec"], "rows": [{"label": "Intervenciones totales", "base": "-", "vals": [82, 91, 82, 74, 73, 59, 61, 16]}, {"label": "Derivaciones CIS", "base": "-", "vals": [0, 3, 2, 1, 3, 1, 0, 4]}, {"label": "Llamados 108", "base": "-", "vals": [79, 86, 81, 68, 70, 58, 57, 11]}, {"label": "% Se contacta", "base": "-", "vals": ["14% (11)", "14% (12)", "10% (8)", "9% (6)", "39% (27)", "21% (12)", "25% (14)", "0% (0)"]}, {"label": "% No se contacta", "base": "-", "vals": ["4% (3)", "15% (13)", "30% (24)", "13% (9)", "33% (23)", "17% (10)", "26% (15)", "0% (0)"]}, {"label": "% Sin cubrir", "base": "-", "vals": ["82% (65)", "71% (61)", "60% (49)", "78% (53)", "29% (20)", "62% (36)", "49% (28)", "100% (11)"]}]}, "c11": {"weeks": ["10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec", "22 Dec", "29 Dec"], "rows": [{"label": "Intervenciones totales", "base": "-", "vals": [122, 105, 97, 132, 95, 92, 67, 11]}, {"label": "Derivaciones CIS", "base": "-", "vals": [0, 0, 0, 2, 1, 2, 0, 0]}, {"label": "Llamados 108", "base": "-", "vals": [115, 95, 84, 117, 83, 76, 58, 11]}, {"label": "% Se contacta", "base": "-", "vals": ["10% (12)", "16% (15)", "4% (3)", "9% (11)", "24% (20)", "12% (9)", "10% (6)", "9% (1)"]}, {"label": "% No se contacta", "base": "-", "vals": ["30% (34)", "21% (20)", "26% (22)", "13% (15)", "37% (31)", "21% (16)", "28% (16)", "0% (0)"]}, {"label": "% Sin cubrir", "base": "-", "vals": ["60% (69)", "63% (60)", "70% (59)", "78% (91)", "39% (32)", "67% (51)", "62% (36)", "91% (10)"]}]}, "c12": {"weeks": ["10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec", "22 Dec", "29 Dec"], "rows": [{"label": "Intervenciones totales", "base": "-", "vals": [101, 154, 125, 106, 113, 106, 101, 17]}, {"label": "Derivaciones CIS", "base": "-", "vals": [0, 2, 3, 3, 0, 2, 2, 0]}, {"label": "Llamados 108", "base": "-", "vals": [88, 94, 107, 93, 104, 88, 88, 16]}, {"label": "% Se contacta", "base": "-", "vals": ["11% (10)", "15% (14)", "22% (24)", "6% (6)", "29% (30)", "22% (19)", "26% (23)", "25% (4)"]}, {"label": "% No se contacta", "base": "-", "vals": ["32% (28)", "21% (20)", "22% (24)", "15% (14)", "40% (42)", "28% (25)", "34% (30)", "0% (0)"]}, {"label": "% Sin cubrir", "base": "-", "vals": ["57% (50)", "64% (60)", "55% (59)", "78% (73)", "31% (32)", "50% (44)", "40% (35)", "75% (12)"]}]}, "c13": {"weeks": ["10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec", "22 Dec", "29 Dec"], "rows": [{"label": "Intervenciones totales", "base": "-", "vals": [203, 193, 231, 246, 203, 202, 166, 26]}, {"label": "Derivaciones CIS", "base": "-", "vals": [6, 5, 3, 7, 5, 13, 4, 0]}, {"label": "Llamados 108", "base": "-", "vals": [174, 153, 180, 203, 168, 158, 136, 25]}, {"label": "% Se contacta", "base": "-", "vals": ["16% (28)", "14% (22)", "10% (18)", "11% (23)", "23% (39)", "19% (30)", "19% (26)", "16% (4)"]}, {"label": "% No se contacta", "base": "-", "vals": ["35% (61)", "30% (46)", "32% (57)", "14% (29)", "40% (68)", "32% (50)", "37% (50)", "16% (4)"]}, {"label": "% Sin cubrir", "base": "-", "vals": ["49% (85)", "56% (85)", "58% (105)", "74% (151)", "36% (61)", "49% (78)", "44% (60)", "68% (17)"]}]}, "c14": {"weeks": ["10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec", "22 Dec", "29 Dec"], "rows": [{"label": "Intervenciones totales", "base": "366", "vals": [340, 367, 385, 380, 663, 976, 968, 210]}, {"label": "Derivaciones CIS", "base": "7", "vals": [4, 8, 10, 11, 23, 36, 47, 8]}, {"label": "Llamados 108", "base": "245", "vals": [184, 257, 264, 268, 264, 309, 250, 56]}, {"label": "% Se contacta", "base": "23% (58)", "vals": ["14% (25)", "19% (49)", "20% (52)", "27% (73)", "34% (89)", "51% (157)", "55% (138)", "50% (28)"]}, {"label": "% No se contacta", "base": "31% (76)", "vals": ["28% (51)", "29% (75)", "32% (84)", "28% (74)", "35% (93)", "46% (142)", "42% (104)", "46% (26)"]}, {"label": "% Sin cubrir", "base": "45% (111)", "vals": ["59% (108)", "52% (133)", "48% (128)", "45% (121)", "31% (82)", "3% (10)", "3% (8)", "4% (2)"]}]}, "c15": {"weeks": ["10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec", "22 Dec", "29 Dec"], "rows": [{"label": "Intervenciones totales", "base": "-", "vals": [282, 394, 242, 233, 267, 265, 254, 33]}, {"label": "Derivaciones CIS", "base": "-", "vals": [49, 49, 42, 24, 34, 45, 29, 10]}, {"label": "Llamados 108", "base": "-", "vals": [191, 288, 180, 161, 204, 195, 156, 21]}, {"label": "% Se contacta", "base": "-", "vals": ["17% (32)", "46% (132)", "16% (28)", "21% (34)", "25% (52)", "33% (64)", "33% (51)", "29% (6)"]}, {"label": "% No se contacta", "base": "-", "vals": ["23% (43)", "18% (53)", "21% (37)", "17% (27)", "37% (76)", "17% (34)", "31% (48)", "5% (1)"]}, {"label": "% Sin cubrir", "base": "-", "vals": ["61% (116)", "36% (103)", "64% (115)", "62% (100)", "37% (76)", "50% (97)", "37% (57)", "67% (14)"]}]}, "total": {"weeks": ["10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec", "22 Dec", "29 Dec"], "rows": [{"label": "Intervenciones totales", "base": "4344", "vals": [6043, 6163, 5906, 5182, 5723, 5330, 4938, 851]}, {"label": "Derivaciones CIS", "base": "341", "vals": [441, 467, 415, 397, 502, 498, 435, 55]}, {"label": "Llamados 108", "base": "2798", "vals": [3161, 3299, 3234, 3131, 3418, 3094, 2681, 484]}, {"label": "% Se contacta", "base": "782", "vals": ["24% (743)", "26% (868)", "27% (861)", "27% (834)", "37% (1276)", "31% (965)", "35% (929)", "31% (149)"]}, {"label": "% No se contacta", "base": "717", "vals": ["27% (866)", "23% (771)", "27% (865)", "21% (662)", "34% (1166)", "30% (918)", "33% (877)", "15% (75)"]}, {"label": "% Sin cubrir", "base": "1299", "vals": ["49% (1552)", "50% (1660)", "47% (1508)", "52% (1635)", "29% (976)", "39% (1211)", "33% (875)", "54% (260)"]}]}};
         const chartDataC2 = {"labels": ["10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec", "22 Dec", "29 Dec"], "datasets": [{"label": "Nuevos", "data": [66, 52, 43, 36, 37, 40, 25, 2], "backgroundColor": "#10B981"}, {"label": "Recurrentes", "data": [94, 99, 61, 77, 71, 50, 41, 11], "backgroundColor": "#3B82F6"}, {"label": "Migratorios", "data": [58, 44, 48, 55, 50, 55, 19, 5], "backgroundColor": "#F97316"}]};
         const chartDataC14 = {"labels": ["10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec", "22 Dec", "29 Dec"], "datasets": [{"label": "Nuevos", "data": [8, 8, 7, 13, 29, 48, 41, 17], "backgroundColor": "#10B981"}, {"label": "Recurrentes", "data": [6, 9, 8, 6, 14, 34, 35, 19], "backgroundColor": "#3B82F6"}, {"label": "Migratorios", "data": [8, 21, 13, 13, 20, 36, 42, 6], "backgroundColor": "#F97316"}]};
-        
-        const appState = { table1: new Set(['c2']), table2: new Set(['total']) };
 
-        function aggregateData(keys) {
-            if (keys.length === 0) return null;
-            if (keys.length === 1) {
-                const k = keys[0];
-                const d = allComunaData[k];
-                const showBase = ['c2', 'c14', 'total'].includes(k);
-                const rows = d.rows.map(r => ({ ...r, base: showBase ? r.base : "-" }));
-                return { weeks: d.weeks, rows: rows };
-            }
-            const weeks = allComunaData['total'].weeks;
-            const acc = { interv: new Array(8).fill(0), deriv: new Array(8).fill(0), llamados: new Array(8).fill(0), contacta_count: new Array(8).fill(0), no_contacta_count: new Array(8).fill(0), sin_cubrir_count: new Array(8).fill(0) };
-
-            keys.forEach(k => {
-                const d = allComunaData[k];
-                if (!d) return;
-                d.rows[0].vals.forEach((v, i) => acc.interv[i] += parseInt(v));
-                d.rows[1].vals.forEach((v, i) => acc.deriv[i] += parseInt(v));
-                d.rows[2].vals.forEach((v, i) => acc.llamados[i] += parseInt(v));
-                const parseCount = (str) => { const m = str.match(/\((\d+)\)/); return m ? parseInt(m[1]) : 0; };
-                d.rows[3].vals.forEach((v, i) => acc.contacta_count[i] += parseCount(v));
-                d.rows[4].vals.forEach((v, i) => acc.no_contacta_count[i] += parseCount(v));
-                d.rows[5].vals.forEach((v, i) => acc.sin_cubrir_count[i] += parseCount(v));
-            });
-
-            const fmtPct = (count, total) => { if (total === 0) return "0% (0)"; return `${Math.round((count/total)*100)}% (${count})`; };
-            const rows = [
-                { label: 'Intervenciones totales', base: '-', vals: acc.interv },
-                { label: 'Derivaciones CIS', base: '-', vals: acc.deriv },
-                { label: 'Llamados 108', base: '-', vals: acc.llamados },
-                { label: '% Se contacta', base: '-', vals: acc.contacta_count.map((c, i) => fmtPct(c, acc.llamados[i])) },
-                { label: '% No se contacta', base: '-', vals: acc.no_contacta_count.map((c, i) => fmtPct(c, acc.llamados[i])) },
-                { label: '% Sin cubrir', base: '-', vals: acc.sin_cubrir_count.map((c, i) => fmtPct(c, acc.llamados[i])) }
-            ];
-            return { weeks: weeks, rows: rows };
-        }
-
-        function toggleDropdown(id) { document.getElementById(id).classList.toggle('hidden'); }
-        window.onclick = function(e) { if (!e.target.closest('.relative.inline-block')) document.querySelectorAll('[id^="dropdown_"]').forEach(el => el.classList.add('hidden')); }
-
-        function updateSelection(containerId, key, isChecked) {
-            const set = appState[containerId];
-            if (isChecked) set.add(key); else set.delete(key);
-            const btnLabel = document.getElementById(`label_${containerId}`);
-            if (set.size === 0) btnLabel.textContent = "Ninguna";
-            else if (set.size === 1) { const k = Array.from(set)[0]; btnLabel.textContent = k === 'total' ? 'Total Ciudad' : `Comuna ${k.replace('c','')}`; }
-            else btnLabel.textContent = `${set.size} Seleccionadas`;
-            renderTable(containerId);
-        }
-
-        function renderTable(containerId) {
-            const data = aggregateData(Array.from(appState[containerId]));
+        // RENDER TABLA
+        function renderTable(containerId, key) {
+            const data = allComunaData[key];
+            if (!data) return;
             const container = document.getElementById(containerId);
-            if (!data) { container.innerHTML = '<div class="p-8 text-center text-gray-400">Seleccione al menos una opción</div>'; return; }
+            
             let ths = '<th class="p-3 text-left">Indicadores</th><th class="p-3 w-20 bg-teal-800">Línea Base</th>';
             data.weeks.forEach(w => ths += `<th class="p-3 w-24">${w}</th>`);
+            
             let trs = '';
-            data.rows.forEach(r => {
-                let tds = ''; r.vals.forEach(v => tds += `<td class="p-3 text-gray-800">${v}</td>`);
-                trs += `<tr class="hover:bg-yellow-50 transition-colors"><td class="p-3 text-left font-semibold text-gray-700 bg-gray-50 sticky left-0">${r.label}</td><td class="p-3 font-bold text-gray-600 bg-gray-100 border-r border-gray-300">${r.base}</td>${tds}</tr>`;
+            data.rows.forEach((r, idx) => {
+                let tds = '';
+                r.vals.forEach(v => tds += `<td class="p-3 text-gray-800">${v}</td>`);
+                trs += `
+                    <tr class="hover:bg-yellow-50 transition-colors">
+                        <td class="p-3 text-left font-semibold text-gray-700 bg-gray-50 sticky left-0">${r.label}</td>
+                        <td class="p-3 font-bold text-gray-600 bg-gray-100 border-r border-gray-300">${r.base}</td>
+                        ${tds}
+                    </tr>`;
             });
+
             container.innerHTML = `<table class="w-full text-sm text-center"><thead><tr class="bg-teal-700 text-white">${ths}</tr></thead><tbody class="divide-y divide-gray-200">${trs}</tbody></table>`;
         }
-        renderTable('table1'); renderTable('table2');
 
+        renderTable('table1', 'c2');
+        renderTable('table2', 'total');
+
+        // FUNCIÓN CHART GENERICA
         function initChart(canvasId, dataJson) {
-            if (typeof ChartDataLabels !== 'undefined') Chart.register(ChartDataLabels);
-            new Chart(document.getElementById(canvasId).getContext('2d'), {
-                type: 'bar', data: dataJson,
-                options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true } }, plugins: { legend: { position: 'top' }, tooltip: { mode: 'index', intersect: false }, datalabels: { color: 'white', font: { weight: 'bold', size: 10 }, formatter: v => v > 0 ? v : '' } } },
-                plugins: [{ id: 'totalLabels', afterDatasetsDraw: (chart) => {
-                    const ctx = chart.ctx;
-                    chart.data.labels.forEach((_, i) => {
-                        let total = 0; chart.data.datasets.forEach(ds => total += ds.data[i]);
-                        if (total > 0) {
-                            const meta = chart.getDatasetMeta(chart.data.datasets.length - 1);
-                            ctx.fillStyle = 'black'; ctx.font = 'bold 11px Inter'; ctx.textAlign = 'center';
-                            ctx.fillText(total, meta.data[i].x, meta.data[i].y - 5);
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            if (typeof ChartDataLabels !== 'undefined') {
+                Chart.register(ChartDataLabels);
+            }
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: dataJson,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { stacked: true, grid: { display: false } },
+                        y: { stacked: true, beginAtZero: true }
+                    },
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: { mode: 'index', intersect: false },
+                        datalabels: {
+                            color: 'white',
+                            font: { weight: 'bold', size: 10 },
+                            formatter: (value) => value > 0 ? value : ''
                         }
-                    });
-                } }]
+                    }
+                },
+                plugins: [{
+                    id: 'totalLabels',
+                    afterDatasetsDraw: (chart) => {
+                        const ctx = chart.ctx;
+                        chart.data.labels.forEach((label, index) => {
+                            let total = 0;
+                            chart.data.datasets.forEach(ds => total += ds.data[index]);
+                            if (total > 0) {
+                                const meta = chart.getDatasetMeta(chart.data.datasets.length - 1);
+                                const x = meta.data[index].x;
+                                const y = meta.data[index].y;
+                                ctx.fillStyle = 'black';
+                                ctx.font = 'bold 11px Inter';
+                                ctx.textAlign = 'center';
+                                ctx.fillText(total, x, y - 5);
+                            }
+                        });
+                    }
+                }]
             });
         }
-        initChart('dniChart', chartDataC2); initChart('dniChart14', chartDataC14);
+
+        initChart('dniChart', chartDataC2);
+        initChart('dniChart14', chartDataC14);
+
     </script>
     
 </body>
