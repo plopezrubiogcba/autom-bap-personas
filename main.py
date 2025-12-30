@@ -1,57 +1,66 @@
-import functions_framework
-import json
-import traceback
-import pandas as pd
-from data_processor import procesar_datos, download_file_as_bytes, get_drive_service
-from looker_reporter import ejecutar_reportes_looker
+import os
+import sys
+# Importamos las funciones necesarias desde tu otro script data_processor.py
+from data_processor import get_drive_service, download_file_as_bytes, procesar_datos
 
-# --- CONFIGURACIÓN DE CARPETAS ---
-# Carpeta 02: Donde viven los parquets (Base de Datos)
-FOLDER_ID_DB = '1q7rGJjb3qCTNcyDUYzpn9v4JveLjsk6t' 
+# --- CONFIGURACIÓN ---
+# ID de la carpeta en Drive donde se buscan los archivos Excel de entrada.
+# IMPORTANTE: Asegúrate de que este ID sea el correcto donde subes los Excels.
+# Si es la misma carpeta que usaste en dashboard_generator, usa ese ID.
+INPUT_FOLDER_ID = '1q7rGJjb3qCTNcyDUYzpn9v4JveLjsk6t' 
 
-@functions_framework.http
-def entry_point(request):
-    """
-    Función HTTP disparada por Apps Script cuando llega un mail.
-    Espera JSON: {"file_id": "...", "file_name": "..."}
-    """
+def main():
+    print("🏁 Iniciando proceso de captura...")
+    
+    # 1. Autenticación
     try:
-        request_json = request.get_json(silent=True)
-        
-        # Validación básica
-        if not request_json or 'file_id' not in request_json:
-            return '❌ Error: Falta el parametro file_id', 400
-
-        file_id = request_json['file_id']
-        file_name = request_json.get('file_name', 'Archivo desconocido')
-        
-        print(f"🔔 Solicitud recibida. Procesando: {file_name} ({file_id})")
-
-        # 1. Conectar a Drive
         service = get_drive_service()
-
-        # 2. Descargar el Excel que llegó por mail
-        excel_bytes = download_file_as_bytes(service, file_id)
-
-        # 3. Ejecutar la maquinaria ETL
-        # CORRECCIÓN 1: Usamos FOLDER_ID_DB (no OUTPUT) y capturamos el resultado en una variable
-        df_limpio = procesar_datos(excel_bytes, FOLDER_ID_DB)
-
-        # 4. Actualizar Reportes de Looker
-        # CORRECCIÓN 2: Llamamos a la función del reportero si hay datos
-        if df_limpio is not None and not df_limpio.empty:
-            print("🚀 Iniciando actualización de Looker...")
-            ejecutar_reportes_looker(df_limpio)
-        else:
-            print("⚠️ El procesamiento no devolvió datos o el dataframe está vacío.")
-
-        return f'✅ Procesamiento y Reportes exitosos para {file_name}', 200
-
     except Exception as e:
-        error_msg = f"🔥 Error Crítico: {str(e)}"
-        print(error_msg)
-        traceback.print_exc() # Imprime el error completo en los logs de Google Cloud
-        return error_msg, 500
+        print(f"❌ Error de autenticación: {e}")
+        return
 
+    # 2. Buscar el Excel más reciente en la carpeta de entrada
+    # Filtramos por archivos Excel y que no estén en la papelera
+    query = f"'{INPUT_FOLDER_ID}' in parents and mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' and trashed = false"
+    
+    # Ordenamos por fecha de creación descendente para tomar el último
+    results = service.files().list(
+        q=query, 
+        orderBy='createdTime desc', 
+        pageSize=1, 
+        fields="files(id, name, createdTime)"
+    ).execute()
+    
+    files = results.get('files', [])
+
+    if not files:
+        print("⚠️ No se encontraron archivos Excel en la carpeta especificada.")
+        return
+
+    archivo_excel = files[0]
+    file_id = archivo_excel['id']
+    file_name = archivo_excel['name']
+    
+    print(f"📄 Archivo detectado: {file_name} (ID: {file_id})")
+
+    # 3. Descargar el archivo a memoria (bytes)
+    try:
+        excel_bytes = download_file_as_bytes(service, file_id)
+        print("✅ Descarga completada.")
+    except Exception as e:
+        print(f"❌ Error descargando archivo: {e}")
+        return
+
+    # 4. Enviar al Procesador (ETL + BigQuery)
+    # Esto limpiará los datos, creará el parquet y actualizará BigQuery
+    try:
+        procesar_datos(excel_bytes, INPUT_FOLDER_ID)
+        print("🚀 Ciclo completo finalizado con éxito. BigQuery actualizado.")
+    except Exception as e:
+        print(f"❌ Error durante el procesamiento: {e}")
+        # Hacemos raise para que si esto corre en GitHub Actions, marque error rojo
+        raise e
+
+# Este es el punto de entrada que le faltaba o estaba mal definido
 if __name__ == '__main__':
     main()
