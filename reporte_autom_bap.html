@@ -42,7 +42,7 @@
                  </h1>
                  <div class="hidden sm:flex items-center space-x-4 border-l border-gray-400 pl-4 h-1/2">
                      <div class="flex flex-col text-xs font-semibold text-gray-800">
-                          <div>Actualizado: 30/12/2025 12:30</div>
+                          <div>Actualizado: 30/12/2025 12:55</div>
                           <div class="text-gray-600">Semana: 29 Dec</div>
                      </div>
                  </div>
@@ -57,55 +57,15 @@
     <main class="container mx-auto p-6 space-y-12">
 
         <!-- SECCION 1: TABLAS -->
-
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        
-        <section class="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-            <h2 class="text-xl font-bold text-gray-800 mb-6 border-b pb-2">Evolución Semanal de DNI's (Operación Comuna 2)</h2>
-            <div class="relative h-96 w-full">
-                <canvas id="dniChart"></canvas>
-            </div>
-        </section>
-        
-        
-        <section class="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-            <h2 class="text-xl font-bold text-gray-800 mb-6 border-b pb-2">Evolución Semanal de DNI's (Operación Comuna 14)</h2>
-            <div class="relative h-96 w-full">
-                <canvas id="dniChart14"></canvas>
-            </div>
-        </section>
-        
-    </div>
-    
-    
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8"><section class="bg-white rounded-xl shadow-lg p-6 border border-gray-200"><h2 class="text-xl font-bold text-gray-800 mb-6 border-b pb-2">Evolución Semanal de DNI's (Operación Comuna 2)</h2><div class="relative h-96 w-full"><canvas id="dniChart"></canvas></div></section><section class="bg-white rounded-xl shadow-lg p-6 border border-gray-200"><h2 class="text-xl font-bold text-gray-800 mb-6 border-b pb-2">Evolución Semanal de DNI's (Operación Comuna 14)</h2><div class="relative h-96 w-full"><canvas id="dniChart14"></canvas></div></section></div>
 
         <!-- SECCION 2: GRAFICOS -->
-
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        
-        <section class="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-            <h2 class="text-xl font-bold text-gray-800 mb-6 border-b pb-2">Evolución Semanal de DNI's (Operación Comuna 2)</h2>
-            <div class="relative h-96 w-full">
-                <canvas id="dniChart"></canvas>
-            </div>
-        </section>
-        
-        
-        <section class="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-            <h2 class="text-xl font-bold text-gray-800 mb-6 border-b pb-2">Evolución Semanal de DNI's (Operación Comuna 14)</h2>
-            <div class="relative h-96 w-full">
-                <canvas id="dniChart14"></canvas>
-            </div>
-        </section>
-        
-    </div>
-    
-    
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8"><section class="bg-white rounded-xl shadow-lg p-6 border border-gray-200"><h2 class="text-xl font-bold text-gray-800 mb-6 border-b pb-2">Evolución Semanal de DNI's (Operación Comuna 2)</h2><div class="relative h-96 w-full"><canvas id="dniChart"></canvas></div></section><section class="bg-white rounded-xl shadow-lg p-6 border border-gray-200"><h2 class="text-xl font-bold text-gray-800 mb-6 border-b pb-2">Evolución Semanal de DNI's (Operación Comuna 14)</h2><div class="relative h-96 w-full"><canvas id="dniChart14"></canvas></div></section></div>
 
     </main>
 
     <footer class="text-center p-8 text-gray-500 text-sm">
-        <p>Gobierno de la Ciudad de Buenos Aires - Red de Atención</p>
+        <p>Gobierno de la Ciudad de Buenos Aires - BAP Personas</p>
     </footer>
 
     
@@ -114,10 +74,7 @@
         const chartDataC2 = {"labels": ["10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec", "22 Dec", "29 Dec"], "datasets": [{"label": "Nuevos", "data": [66, 52, 43, 36, 37, 40, 25, 2], "backgroundColor": "#10B981"}, {"label": "Recurrentes", "data": [94, 99, 61, 77, 71, 50, 41, 11], "backgroundColor": "#3B82F6"}, {"label": "Migratorios", "data": [58, 44, 48, 55, 50, 55, 19, 5], "backgroundColor": "#F97316"}]};
         const chartDataC14 = {"labels": ["10 Nov", "17 Nov", "24 Nov", "01 Dec", "08 Dec", "15 Dec", "22 Dec", "29 Dec"], "datasets": [{"label": "Nuevos", "data": [8, 8, 7, 13, 29, 48, 41, 17], "backgroundColor": "#10B981"}, {"label": "Recurrentes", "data": [6, 9, 8, 6, 14, 34, 35, 19], "backgroundColor": "#3B82F6"}, {"label": "Migratorios", "data": [8, 21, 13, 13, 20, 36, 42, 6], "backgroundColor": "#F97316"}]};
         
-        const appState = {
-            table1: new Set(['c2']),
-            table2: new Set(['total'])
-        };
+        const appState = { table1: new Set(['c2']), table2: new Set(['total']) };
 
         function aggregateData(keys) {
             if (keys.length === 0) return null;
@@ -125,22 +82,11 @@
                 const k = keys[0];
                 const d = allComunaData[k];
                 const showBase = ['c2', 'c14', 'total'].includes(k);
-                const rows = d.rows.map(r => ({
-                    ...r,
-                    base: showBase ? r.base : "-"
-                }));
+                const rows = d.rows.map(r => ({ ...r, base: showBase ? r.base : "-" }));
                 return { weeks: d.weeks, rows: rows };
             }
-
             const weeks = allComunaData['total'].weeks;
-            const acc = {
-                interv: new Array(8).fill(0),
-                deriv: new Array(8).fill(0),
-                llamados: new Array(8).fill(0),
-                contacta_count: new Array(8).fill(0),
-                no_contacta_count: new Array(8).fill(0),
-                sin_cubrir_count: new Array(8).fill(0)
-            };
+            const acc = { interv: new Array(8).fill(0), deriv: new Array(8).fill(0), llamados: new Array(8).fill(0), contacta_count: new Array(8).fill(0), no_contacta_count: new Array(8).fill(0), sin_cubrir_count: new Array(8).fill(0) };
 
             keys.forEach(k => {
                 const d = allComunaData[k];
@@ -148,21 +94,13 @@
                 d.rows[0].vals.forEach((v, i) => acc.interv[i] += parseInt(v));
                 d.rows[1].vals.forEach((v, i) => acc.deriv[i] += parseInt(v));
                 d.rows[2].vals.forEach((v, i) => acc.llamados[i] += parseInt(v));
-                const parseCount = (str) => {
-                    const m = str.match(/\((\d+)\)/);
-                    return m ? parseInt(m[1]) : 0;
-                };
+                const parseCount = (str) => { const m = str.match(/\((\d+)\)/); return m ? parseInt(m[1]) : 0; };
                 d.rows[3].vals.forEach((v, i) => acc.contacta_count[i] += parseCount(v));
                 d.rows[4].vals.forEach((v, i) => acc.no_contacta_count[i] += parseCount(v));
                 d.rows[5].vals.forEach((v, i) => acc.sin_cubrir_count[i] += parseCount(v));
             });
 
-            const fmtPct = (count, total) => {
-                if (total === 0) return "0% (0)";
-                const pct = Math.round((count / total) * 100);
-                return `${pct}% (${count})`;
-            };
-
+            const fmtPct = (count, total) => { if (total === 0) return "0% (0)"; return `${Math.round((count/total)*100)}% (${count})`; };
             const rows = [
                 { label: 'Intervenciones totales', base: '-', vals: acc.interv },
                 { label: 'Derivaciones CIS', base: '-', vals: acc.deriv },
@@ -174,111 +112,53 @@
             return { weeks: weeks, rows: rows };
         }
 
-        function toggleDropdown(id) {
-            const el = document.getElementById(id);
-            el.classList.toggle('hidden');
-        }
-
-        window.onclick = function(event) {
-            if (!event.target.closest('.relative.inline-block')) {
-                document.querySelectorAll('[id^="dropdown_"]').forEach(el => {
-                    el.classList.add('hidden');
-                });
-            }
-        }
+        function toggleDropdown(id) { document.getElementById(id).classList.toggle('hidden'); }
+        window.onclick = function(e) { if (!e.target.closest('.relative.inline-block')) document.querySelectorAll('[id^="dropdown_"]').forEach(el => el.classList.add('hidden')); }
 
         function updateSelection(containerId, key, isChecked) {
             const set = appState[containerId];
             if (isChecked) set.add(key); else set.delete(key);
-            
             const btnLabel = document.getElementById(`label_${containerId}`);
             if (set.size === 0) btnLabel.textContent = "Ninguna";
-            else if (set.size === 1) {
-                const k = Array.from(set)[0];
-                btnLabel.textContent = k === 'total' ? 'Total Ciudad' : `Comuna ${k.replace('c','')}`;
-            } else btnLabel.textContent = `${set.size} Seleccionadas`;
-
+            else if (set.size === 1) { const k = Array.from(set)[0]; btnLabel.textContent = k === 'total' ? 'Total Ciudad' : `Comuna ${k.replace('c','')}`; }
+            else btnLabel.textContent = `${set.size} Seleccionadas`;
             renderTable(containerId);
         }
 
         function renderTable(containerId) {
-            const keys = Array.from(appState[containerId]);
-            const data = aggregateData(keys);
+            const data = aggregateData(Array.from(appState[containerId]));
             const container = document.getElementById(containerId);
-            
-            if (!data) {
-                container.innerHTML = '<div class="p-8 text-center text-gray-400">Seleccione al menos una opción</div>';
-                return;
-            }
-            
+            if (!data) { container.innerHTML = '<div class="p-8 text-center text-gray-400">Seleccione al menos una opción</div>'; return; }
             let ths = '<th class="p-3 text-left">Indicadores</th><th class="p-3 w-20 bg-teal-800">Línea Base</th>';
             data.weeks.forEach(w => ths += `<th class="p-3 w-24">${w}</th>`);
-            
             let trs = '';
-            data.rows.forEach((r, idx) => {
-                let tds = '';
-                r.vals.forEach(v => tds += `<td class="p-3 text-gray-800">${v}</td>`);
-                trs += `
-                    <tr class="hover:bg-yellow-50 transition-colors">
-                        <td class="p-3 text-left font-semibold text-gray-700 bg-gray-50 sticky left-0">${r.label}</td>
-                        <td class="p-3 font-bold text-gray-600 bg-gray-100 border-r border-gray-300">${r.base}</td>
-                        ${tds}
-                    </tr>`;
+            data.rows.forEach(r => {
+                let tds = ''; r.vals.forEach(v => tds += `<td class="p-3 text-gray-800">${v}</td>`);
+                trs += `<tr class="hover:bg-yellow-50 transition-colors"><td class="p-3 text-left font-semibold text-gray-700 bg-gray-50 sticky left-0">${r.label}</td><td class="p-3 font-bold text-gray-600 bg-gray-100 border-r border-gray-300">${r.base}</td>${tds}</tr>`;
             });
             container.innerHTML = `<table class="w-full text-sm text-center"><thead><tr class="bg-teal-700 text-white">${ths}</tr></thead><tbody class="divide-y divide-gray-200">${trs}</tbody></table>`;
         }
-
-        renderTable('table1');
-        renderTable('table2');
+        renderTable('table1'); renderTable('table2');
 
         function initChart(canvasId, dataJson) {
-            const ctx = document.getElementById(canvasId).getContext('2d');
             if (typeof ChartDataLabels !== 'undefined') Chart.register(ChartDataLabels);
-
-            new Chart(ctx, {
-                type: 'bar',
-                data: dataJson,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: { stacked: true, grid: { display: false } },
-                        y: { stacked: true, beginAtZero: true }
-                    },
-                    plugins: {
-                        legend: { position: 'top' },
-                        tooltip: { mode: 'index', intersect: false },
-                        datalabels: {
-                            color: 'white',
-                            font: { weight: 'bold', size: 10 },
-                            formatter: (value) => value > 0 ? value : ''
+            new Chart(document.getElementById(canvasId).getContext('2d'), {
+                type: 'bar', data: dataJson,
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true } }, plugins: { legend: { position: 'top' }, tooltip: { mode: 'index', intersect: false }, datalabels: { color: 'white', font: { weight: 'bold', size: 10 }, formatter: v => v > 0 ? v : '' } } },
+                plugins: [{ id: 'totalLabels', afterDatasetsDraw: (chart) => {
+                    const ctx = chart.ctx;
+                    chart.data.labels.forEach((_, i) => {
+                        let total = 0; chart.data.datasets.forEach(ds => total += ds.data[i]);
+                        if (total > 0) {
+                            const meta = chart.getDatasetMeta(chart.data.datasets.length - 1);
+                            ctx.fillStyle = 'black'; ctx.font = 'bold 11px Inter'; ctx.textAlign = 'center';
+                            ctx.fillText(total, meta.data[i].x, meta.data[i].y - 5);
                         }
-                    }
-                },
-                plugins: [{
-                    id: 'totalLabels',
-                    afterDatasetsDraw: (chart) => {
-                        const ctx = chart.ctx;
-                        chart.data.labels.forEach((label, index) => {
-                            let total = 0;
-                            chart.data.datasets.forEach(ds => total += ds.data[index]);
-                            if (total > 0) {
-                                const meta = chart.getDatasetMeta(chart.data.datasets.length - 1);
-                                const x = meta.data[index].x;
-                                const y = meta.data[index].y;
-                                ctx.fillStyle = 'black';
-                                ctx.font = 'bold 11px Inter';
-                                ctx.textAlign = 'center';
-                                ctx.fillText(total, x, y - 5);
-                            }
-                        });
-                    }
-                }]
+                    });
+                } }]
             });
         }
-
-        initChart('dniChart', chartDataC2);
-        initChart('dniChart14', chartDataC14);
+        initChart('dniChart', chartDataC2); initChart('dniChart14', chartDataC14);
     </script>
     
 </body>
