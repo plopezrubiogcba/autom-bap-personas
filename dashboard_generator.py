@@ -9,7 +9,7 @@ from datetime import datetime
 import pytz
 
 # --- CONFIGURACION ---
-# ID de la carpeta DB (tomado de main.py)
+# ID de la carpeta DB
 FOLDER_ID_DB = '1q7rGJjb3qCTNcyDUYzpn9v4JveLjsk6t'
 FILE_NAME_PARQUET = '2025_historico_limpio.parquet'
 TEMPLATE_HTML_PATH = 'reporte_tablero.html'
@@ -39,10 +39,7 @@ def clasificar_contacto(row):
         return 'Se contacta'
 
 def calculate_dni_evolution(df_base, target_comuna_id=2):
-    """
-    Calcula evolución de DNIs para una Comuna dada (Nuevos/Recurrentes/Migratorios).
-    target_comuna_id puede ser int (2, 14, etc).
-    """
+    """Calcula evolución de DNIs para una Comuna dada."""
     COL_FECHA = "Fecha Inicio"
     COL_DNI = "DNI_Categorizado"
     COL_COMUNA = "comuna_calculada"
@@ -60,14 +57,11 @@ def calculate_dni_evolution(df_base, target_comuna_id=2):
         if isinstance(x, (int, float)): return x == float(target_comuna_id)
         
         sx = str(x).upper().replace(" ", "")
-        
-        # Variaciones comunes
         if target_comuna_id == 2:
             return sx in {"2", "2.0", "COMUNA2"}
         elif target_comuna_id == 14:
             return sx in {"14", "14.0", "COMUNA14"}
         else:
-            # Fallback generico
             return sx in {str(target_comuna_id), f"{target_comuna_id}.0", f"COMUNA{target_comuna_id}"}
 
     semanas = sorted(df_sem["Semana"].unique())
@@ -89,14 +83,9 @@ def calculate_dni_evolution(df_base, target_comuna_id=2):
             if prior_comuna is None and dni not in dni_seen:
                 nue_count += 1
             else:
-                # Si existia su ultima comuna registrada y ERA la target => Recurrente
                 if prior_comuna is not None and is_target_val(prior_comuna):
                     rec_count += 1
                 else:
-                    # Si existia pero NO era la target => Migratorio (viene de otro lado)
-                    # O si no tenia prior_comuna pero YA FUE visto (caso borde) => Migratorio interno (??)
-                    # La logica original dice: "if prior_comuna is None and dni not in dni_seen: Nuevo"
-                    # "else: ..." -> aqui entra si tiene prior_comuna OR dni in dni_seen.
                     mig_count += 1
         
         resultados.append({
@@ -117,12 +106,9 @@ def calculate_dni_evolution(df_base, target_comuna_id=2):
 # =============================================================================
 
 def get_stats_data_raw(df_base, comuna_filter_func, base_vals):
-    """
-    Devuelve un diccionario con los datos crudos para el frontend.
-    """
+    """Devuelve un diccionario con los datos crudos para el frontend."""
     df = comuna_filter_func(df_base).copy()
     
-    # 8 Semanas fijas
     all_weeks = sorted(df_base['Fecha Inicio'].dt.to_period('W-SUN').dt.start_time.unique())[-8:]
     weeks_str = [w.strftime('%d %b').replace('.', '').title() for w in all_weeks]
 
@@ -185,34 +171,22 @@ def main():
 
     df['Fecha Inicio'] = pd.to_datetime(df['Fecha Inicio'])
     
-    # --- CONFIGURACIÓN DE HORA ARGENTINA ---
+    # --- CONFIGURACIÓN HORA ARGENTINA ---
     zona_arg = pytz.timezone('America/Argentina/Buenos_Aires')
-    fecha_hora_arg = datetime.now(zona_arg)
-    last_update = fecha_hora_arg.strftime("%d/%m/%Y %H:%M")
+    last_update = datetime.now(zona_arg).strftime("%d/%m/%Y %H:%M")
 
     print("📊 Calculando datos para TODAS las comunas...")
     
     all_data = {}
-    
-    # Bases HARDCODEADAS
-    # Usare valores vacios "-" para las comunas que no son la 2, la 14 o el Resto
     base_dummy = ["-", "-", "-", "-", "-", "-"]
     base_c2 = ["1364", "92", "247", "151", "90", "6"]
-    
-    # Comuna 14
-    # Valores: 366, 7, 245, 23% (58), 31% (76), 45% (111)
     base_c14 = ["366", "7", "245", "23% (58)", "31% (76)", "45% (111)"]
-    
-    # Base Total (Antiguamente Resto - Solicitado usar esta base para Total)
     base_total = ["4344", "341", "2798", "782", "717", "1299"]
 
     for c in range(1, 16):
-        if c == 2:
-            base = base_c2
-        elif c == 14:
-            base = base_c14
-        else:
-            base = base_dummy
+        if c == 2: base = base_c2
+        elif c == 14: base = base_c14
+        else: base = base_dummy
             
         all_data[f'c{c}'] = get_stats_data_raw(
             df, 
@@ -220,7 +194,6 @@ def main():
             base
         )
     
-    # Total Ciudad (Usando base_total)
     all_data['total'] = get_stats_data_raw(df, lambda d: d, base_total)
 
     def prepare_chart_json(dni_data_list):
@@ -246,11 +219,10 @@ def main():
     with open(TEMPLATE_HTML_PATH, 'r', encoding='utf-8') as f:
         html = f.read()
 
-    # --- CAMBIOS DE NOMBRE (Refinamiento Final) ---
+    # Reemplazos y ajustes visuales
     html = html.replace("Red BAP", "Red de Atención")
     html = html.replace("BAP Personas", "Red de Atención")
 
-    # --- LOGO (Base64) ---
     import base64
     logo_b64 = ""
     logo_path = "logoba-removebg-preview.png"
@@ -260,20 +232,15 @@ def main():
             logo_b64 = base64.b64encode(image_file.read()).decode('utf-8')
             img_tag = f'<img src="data:image/png;base64,{logo_b64}" alt="BA Logo" class="h-16 w-auto object-contain" />'
     else:
-        # Fallback si no encuentra la imagen
         img_tag = '<span class="text-white font-bold text-xl">BA</span>'
 
-    # --- NUEVO HEADER (Diseño Visual) ---
-    # Reemplazamos todo el bloque <header>...</header> del template original
     new_header = f'''
     <header class="sticky top-0 z-50 flex w-full h-24 bg-[#1E2B37] font-sans shadow-md">
         <div class="flex-grow bg-gradient-to-r from-[#8BE3D9] to-[#80E0D6] rounded-tr-[3rem] flex mr-4 relative items-center">
-            
             <div class="bg-ba-yellow h-full w-full lg:w-1/2 rounded-tr-[3rem] px-8 flex items-center justify-between sm:justify-start sm:space-x-8 relative z-10 shadow-sm">
                  <h1 class="text-xl md:text-2xl font-bold text-ba-grey uppercase tracking-wider leading-tight">
                     INDICADORES CLAVE - RED DE ATENCIÓN
                  </h1>
-                 
                  <div class="hidden sm:flex items-center space-x-4 border-l border-gray-400 pl-4 h-1/2">
                      <div class="flex flex-col text-xs font-semibold text-gray-800">
                           <div>Actualizado: 01/01/2000 00:00</div>
@@ -281,39 +248,26 @@ def main():
                      </div>
                  </div>
             </div>
-
-            </div>
-
+        </div>
         <div class="w-24 md:w-32 flex items-center justify-center shrink-0 pr-4">
              {img_tag}
         </div>
     </header>
     '''
-    
     html = re.sub(r'<header.*?</header>', new_header, html, flags=re.DOTALL)
 
-
-    # --- INYECCIONES ---
-    
-    # 1. CDN Compatibles (Chart.js 3.9.1 + Datalabels 2.2.0)
     head_libs = '''
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
     '''
-    
     html = re.sub(r'<script src=".*?chart\.js.*?"></script>', '', html)
     html = re.sub(r'<script src=".*?chartjs-plugin-datalabels.*?"></script>', '', html)
     html = html.replace('<head>', f'<head>{head_libs}')
 
-    # 2. Contenedores de Tablas (Multi-Select)
     def build_container_html(container_id, title, default_key):
-        # Generamos las opciones del dropdown (Checkboxes)
-        # Checkeamos el default
         opts = ""
         keys = []
         labels = []
-        
-        # Opciones Comunas 1-15
         for i in range(1, 16):
             key = f"c{i}"
             is_checked = "checked" if key == default_key else ""
@@ -329,7 +283,6 @@ def main():
             </label>
             '''
 
-        # Opcion Total
         key_total = "total"
         is_checked_total = "checked" if key_total == default_key else ""
         opts += f'''
@@ -342,15 +295,12 @@ def main():
                 <span class="ml-2 text-gray-800 font-bold">Total Ciudad</span>
             </label>
         '''
-        
-        # Nombre inicial del boton
         default_label = f"Comuna {default_key.replace('c','')}" if default_key != 'total' else "Total Ciudad"
 
         return f'''
             <div class="bg-white rounded-xl shadow-lg overflow-visible border border-gray-200 z-10 relative">
                 <div class="bg-teal-600 p-4 text-white font-bold text-lg flex justify-between items-center rounded-t-xl">
                     <span>{title}</span>
-                    
                     <div class="relative inline-block text-left w-48">
                         <div>
                             <button type="button" 
@@ -363,7 +313,6 @@ def main():
                                 </svg>
                             </button>
                         </div>
-
                         <div id="dropdown_{container_id}" 
                              class="hidden absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50 overflow-y-auto max-h-60 origin-top-right">
                             <div class="py-1" role="menu">
@@ -371,7 +320,6 @@ def main():
                             </div>
                         </div>
                     </div>
-
                 </div>
                 <div class="overflow-x-auto rounded-b-xl" id="{container_id}"></div>
             </div>
@@ -383,7 +331,6 @@ def main():
             {build_container_html('table2', 'Panel Derecho', 'total')}
         </section>
     '''
-    
     html = re.sub(
         r'\s*<section.*?>(.*?)</section>', 
         f'\n{new_section_content}', 
@@ -391,8 +338,6 @@ def main():
         flags=re.DOTALL
     )
 
-    # 3. Gráficos Duales (Comuna 2 y Comuna 14)
-    # Helper para crear seccion de grafico
     def build_chart_section(id_canvas, title):
         return f'''
         <section class="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
@@ -409,7 +354,6 @@ def main():
         {build_chart_section('dniChart14', "Evolución Semanal de DNI's (Operación Comuna 14)")}
     </div>
     '''
-
     html = re.sub(
         r'\s*<section.*?</section>',
         f'\n{charts_html}',
@@ -417,36 +361,27 @@ def main():
         flags=re.DOTALL
     )
 
-    # 4. Lógica JS
     json_all = json.dumps(all_data)
     json_chart_c2 = json.dumps(chart_json_c2)
     json_chart_c14 = json.dumps(chart_json_c14)
 
     js_logic = f'''
     <script>
-        // DATOS GLOBALES
         const allComunaData = {json_all};
         const chartDataC2 = {json_chart_c2};
         const chartDataC14 = {json_chart_c14};
         
-        // ESTADO DE SELECCION
         const appState = {{
             table1: new Set(['c2']),
             table2: new Set(['total'])
         }};
 
-        // LOGICA DE AGREGACION
         function aggregateData(keys) {{
             if (keys.length === 0) return null;
-            
-            // Si es solo una, retornamos directo
             if (keys.length === 1) {{
                 const k = keys[0];
                 const d = allComunaData[k];
-                // Ajuste Linea Base: mostrar solo si es C2, C14 o Total
                 const showBase = ['c2', 'c14', 'total'].includes(k);
-                
-                // Clonamos para no mutar el original
                 const rows = d.rows.map(r => ({{
                     ...r,
                     base: showBase ? r.base : "-"
@@ -454,18 +389,11 @@ def main():
                 return {{ weeks: d.weeks, rows: rows }};
             }}
 
-            // MULTI SELECCION (AGREGAR)
-            const weeks = allComunaData['total'].weeks; // Todas tienen las mismas semanas
-            
-            // Estructura para sumarizar
-            // Indices: 0=Interv Total, 1=Deriv CIS, 2=Llamados, 3=%Contacta, 4=%NoContacta, 5=%SinCubrir
-            // Pero labels pueden variar, usamos indices fijos asumiendo orden constante
-            
-            // Inicializar acumuladores por semana (8 semanas)
+            const weeks = allComunaData['total'].weeks;
             const acc = {{
                 interv: new Array(8).fill(0),
                 deriv: new Array(8).fill(0),
-                llamados: new Array(8).fill(0), // Total Automatica
+                llamados: new Array(8).fill(0),
                 contacta_count: new Array(8).fill(0),
                 no_contacta_count: new Array(8).fill(0),
                 sin_cubrir_count: new Array(8).fill(0)
@@ -474,23 +402,18 @@ def main():
             keys.forEach(k => {{
                 const d = allComunaData[k];
                 if (!d) return;
-
-                d.rows[0].vals.forEach((v, i) => acc.interv[i] += parseInt(v)); // Interv Total
-                d.rows[1].vals.forEach((v, i) => acc.deriv[i] += parseInt(v));  // Deriv CIS
-                d.rows[2].vals.forEach((v, i) => acc.llamados[i] += parseInt(v)); // Llamados 108 (Total Autom)
-                
-                // Parsers para porcentajes: "XX% (YYY)" -> extact YYY
+                d.rows[0].vals.forEach((v, i) => acc.interv[i] += parseInt(v));
+                d.rows[1].vals.forEach((v, i) => acc.deriv[i] += parseInt(v));
+                d.rows[2].vals.forEach((v, i) => acc.llamados[i] += parseInt(v));
                 const parseCount = (str) => {{
                     const m = str.match(/\\((\\d+)\\)/);
                     return m ? parseInt(m[1]) : 0;
                 }};
-
                 d.rows[3].vals.forEach((v, i) => acc.contacta_count[i] += parseCount(v));
                 d.rows[4].vals.forEach((v, i) => acc.no_contacta_count[i] += parseCount(v));
                 d.rows[5].vals.forEach((v, i) => acc.sin_cubrir_count[i] += parseCount(v));
             }});
 
-            // Reconstruir Rows
             const fmtPct = (count, total) => {{
                 if (total === 0) return "0% (0)";
                 const pct = Math.round((count / total) * 100);
@@ -505,22 +428,14 @@ def main():
                 {{ label: '% No se contacta', base: '-', vals: acc.no_contacta_count.map((c, i) => fmtPct(c, acc.llamados[i])) }},
                 {{ label: '% Sin cubrir', base: '-', vals: acc.sin_cubrir_count.map((c, i) => fmtPct(c, acc.llamados[i])) }}
             ];
-
             return {{ weeks: weeks, rows: rows }};
         }}
 
-        // UI HELPERS
         function toggleDropdown(id) {{
             const el = document.getElementById(id);
-            if (el.classList.contains('hidden')) {{
-                // Close others if needed, but simple toggle is enough
-                el.classList.remove('hidden');
-            }} else {{
-                el.classList.add('hidden');
-            }}
+            el.classList.toggle('hidden');
         }}
 
-        // Close dropdowns when clicking outside
         window.onclick = function(event) {{
             if (!event.target.closest('.relative.inline-block')) {{
                 document.querySelectorAll('[id^="dropdown_"]').forEach(el => {{
@@ -531,27 +446,18 @@ def main():
 
         function updateSelection(containerId, key, isChecked) {{
             const set = appState[containerId];
-            if (isChecked) {{
-                set.add(key);
-            }} else {{
-                set.delete(key);
-            }}
+            if (isChecked) set.add(key); else set.delete(key);
             
-            // Actualizar Label Boton
             const btnLabel = document.getElementById(`label_${{containerId}}`);
-            if (set.size === 0) {{
-                btnLabel.textContent = "Ninguna";
-            }} else if (set.size === 1) {{
+            if (set.size === 0) btnLabel.textContent = "Ninguna";
+            else if (set.size === 1) {{
                 const k = Array.from(set)[0];
                 btnLabel.textContent = k === 'total' ? 'Total Ciudad' : `Comuna ${{k.replace('c','')}}`;
-            }} else {{
-                btnLabel.textContent = `${{set.size}} Seleccionadas`;
-            }}
+            }} else btnLabel.textContent = `${{set.size}} Seleccionadas`;
 
             renderTable(containerId);
         }}
 
-        // RENDER TABLA
         function renderTable(containerId) {{
             const keys = Array.from(appState[containerId]);
             const data = aggregateData(keys);
@@ -576,20 +482,15 @@ def main():
                         ${{tds}}
                     </tr>`;
             }});
-
             container.innerHTML = `<table class="w-full text-sm text-center"><thead><tr class="bg-teal-700 text-white">${{ths}}</tr></thead><tbody class="divide-y divide-gray-200">${{trs}}</tbody></table>`;
         }}
 
-        // INIT
         renderTable('table1');
         renderTable('table2');
 
-        // FUNCIÓN CHART GENERICA
         function initChart(canvasId, dataJson) {{
             const ctx = document.getElementById(canvasId).getContext('2d');
-            if (typeof ChartDataLabels !== 'undefined') {{
-                Chart.register(ChartDataLabels);
-            }}
+            if (typeof ChartDataLabels !== 'undefined') Chart.register(ChartDataLabels);
 
             new Chart(ctx, {{
                 type: 'bar',
@@ -635,18 +536,16 @@ def main():
 
         initChart('dniChart', chartDataC2);
         initChart('dniChart14', chartDataC14);
-
     </script>
     '''
 
-    # Usamos replace    # Reemplazamos el script
-    # Usamos lambda para evitar que re.sub interprete los backslashes del JS como escapes
     html = re.sub(
         r'<script>\s*// Datos inyectados desde Python.*?</script>', 
         lambda _: js_logic, 
         html, 
         flags=re.DOTALL
-    )  # Info Header
+    )
+    
     html = re.sub(r'Actualizado: .*?</div>', f'Actualizado: {last_update}</div>', html)
     if chart_json_c2['labels']:
         last_week_label = chart_json_c2['labels'][-1]
