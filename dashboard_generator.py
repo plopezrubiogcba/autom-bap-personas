@@ -26,7 +26,18 @@ def clasificar_contacto(row):
     ]
     
     if row.get('Estado') == 'PENDIENTE':
-        return 'Sin cubrir'
+        # Excepcion pedida: Si es comuna 2 o 14, NO devolver 'Sin cubrir' automaticamente
+        c_val = row.get('comuna_calculada')
+        es_2_or_14 = False
+        try:
+            val = int(float(c_val))
+            if val in [2, 14]:
+                es_2_or_14 = True
+        except:
+            pass
+
+        if not es_2_or_14:
+            return 'Sin cubrir'
     
     resultado = row.get('Resultado')
     if resultado in no_contacta:
