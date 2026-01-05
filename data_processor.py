@@ -341,6 +341,30 @@ def procesar_datos(excel_content_bytes, folder_id):
     df_actualizado['contacto'] = niveles.apply(lambda x: x[0])
     df_actualizado['brinda_datos'] = niveles.apply(lambda x: x[1])
 
+    # === INICIO BLOQUE EVOLUCIÓN DNI (Optimización Power BI) ===
+    print("🧠 Calculando evolución histórica de DNI (Python)...")
+    
+    # 1. Aseguramos el orden cronológico estricto por Persona y Fecha
+    df_actualizado.sort_values(by=['Persona DNI', 'Fecha Inicio'], ascending=[True, True], inplace=True)
+
+    # 2. Vectorización: 'shift' mueve la columna una posición abajo dentro de cada grupo DNI
+    # Esto nos permite comparar la fila actual con la anterior sin usar bucles lentos.
+    df_actualizado['comuna_prev'] = df_actualizado.groupby('Persona DNI')['comuna_calculada'].shift(1)
+
+    # 3. Clasificación Vectorizada (Numpy Select)
+    conditions = [
+        df_actualizado['comuna_prev'].isna(),  # Si no hay registro previo -> Nuevo
+        df_actualizado['comuna_prev'] == df_actualizado['comuna_calculada'] # Misma comuna -> Recurrente
+    ]
+    choices = ['Nuevos', 'Recurrentes']
+    
+    # El default es 'Migratorios' (Si hay previa y es distinta a la actual)
+    df_actualizado['Tipo_Evolucion'] = np.select(conditions, choices, default='Migratorios')
+    
+    # Limpieza de columna auxiliar
+    df_actualizado.drop(columns=['comuna_prev'], inplace=True)
+    # === FIN BLOQUE EVOLUCIÓN DNI ===
+
     # ---------------------------------------------------------
     # GUARDADO FINAL (DRIVE Y BIGQUERY)
     # ---------------------------------------------------------
