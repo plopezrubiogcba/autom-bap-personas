@@ -341,27 +341,38 @@ def procesar_datos(excel_content_bytes, folder_id):
     df_actualizado['contacto'] = niveles.apply(lambda x: x[0])
     df_actualizado['brinda_datos'] = niveles.apply(lambda x: x[1])
 
-    # === INICIO BLOQUE EVOLUCIÓN DNI (Optimización Power BI) ===
+    # === INICIO BLOQUE EVOLUCIÓN DNI (Corregido: DNI_Categorizado) ===
     print("🧠 Calculando evolución histórica de DNI (Python)...")
     
-    # 1. Aseguramos el orden cronológico estricto por Persona y Fecha
-    df_actualizado.sort_values(by=['Persona DNI', 'Fecha Inicio'], ascending=[True, True], inplace=True)
+    # 1. Aseguramos el orden cronológico
+    # Usamos 'DNI_Categorizado' que ya tiene la limpieza aplicada (incluyendo 'NO BRINDO/NO VISIBLE')
+    df_actualizado.sort_values(by=['DNI_Categorizado', 'Fecha Inicio'], ascending=[True, True], inplace=True)
 
-    # 2. Vectorización: 'shift' mueve la columna una posición abajo dentro de cada grupo DNI
-    # Esto nos permite comparar la fila actual con la anterior sin usar bucles lentos.
-    df_actualizado['comuna_prev'] = df_actualizado.groupby('Persona DNI')['comuna_calculada'].shift(1)
+    # 2. Vectorización: 'shift' mueve la columna una posición abajo
+    df_actualizado['comuna_prev'] = df_actualizado.groupby('DNI_Categorizado')['comuna_calculada'].shift(1)
 
-    # 3. Clasificación Vectorizada (Numpy Select)
+    # 3. Definimos qué valores de DNI se consideran "Anónimos"
+    # Ajusta esta lista si hay otras variantes en tu Excel (ej. "No brinda")
+    anonimos = ['NO BRINDO/NO VISIBLE', 'NO BRINDO', 'NO VISIBLE', 'S/D']
+
+    # 4. Clasificación Vectorizada con Prioridad
     conditions = [
-        df_actualizado['comuna_prev'].isna(),  # Si no hay registro previo -> Nuevo
-        df_actualizado['comuna_prev'] == df_actualizado['comuna_calculada'] # Misma comuna -> Recurrente
+        # PRIORIDAD 1: Si es anónimo, cortamos aquí.
+        df_actualizado['DNI_Categorizado'].isin(anonimos), 
+        
+        # PRIORIDAD 2: Si no es anónimo y no tiene historia -> Nuevo
+        df_actualizado['comuna_prev'].isna(),  
+        
+        # PRIORIDAD 3: Si tiene historia y la comuna coincide -> Recurrente
+        df_actualizado['comuna_prev'] == df_actualizado['comuna_calculada'] 
     ]
-    choices = ['Nuevos', 'Recurrentes']
     
-    # El default es 'Migratorios' (Si hay previa y es distinta a la actual)
+    choices = ['No clasificable', 'Nuevos', 'Recurrentes']
+    
+    # El default es 'Migratorios' (Si no es anónimo, tiene previa y es distinta)
     df_actualizado['Tipo_Evolucion'] = np.select(conditions, choices, default='Migratorios')
     
-    # Limpieza de columna auxiliar
+    # Limpieza
     df_actualizado.drop(columns=['comuna_prev'], inplace=True)
     # === FIN BLOQUE EVOLUCIÓN DNI ===
 
