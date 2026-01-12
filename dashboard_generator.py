@@ -202,14 +202,14 @@ def main():
     # Bases HARDCODEADAS
     # Usare valores vacios "-" para las comunas que no son la 2, la 14 o el Resto
     base_dummy = ["-", "-", "-", "-", "-", "-"]
-    base_c2 = ["1364", "92", "247", "151", "90", "6"]
+    base_c2 = ["341", "26",'175', "38% (66)", "53% (92)", "9% (16)"]
     
     # Comuna 14
     # Valores: 366, 7, 245, 23% (58), 31% (76), 45% (111)
     base_c14 = ["366", "7", "245", "23% (58)", "31% (76)", "45% (111)"]
     
     # Base Total (Antiguamente Resto - Solicitado usar esta base para Total)
-    base_total = ["4344", "341", "2798", "782", "717", "1299"]
+    base_total = ["4344", "341", "2798", "27% (782)", "25% (717)", "46% (1299)"]
 
     for c in range(1, 16):
         if c == 2:
