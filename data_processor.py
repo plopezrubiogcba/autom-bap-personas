@@ -8,6 +8,7 @@ import re
 import gc
 import unicodedata
 import unidecode
+import zipfile
 from rapidfuzz import process, fuzz
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -291,12 +292,20 @@ def procesar_datos(excel_content_bytes, folder_id):
     if not os.path.exists(ruta_palermo_norte):
         raise FileNotFoundError(f"❌ No encuentro el archivo KMZ en: {ruta_palermo_norte}")
     
-    # Habilitar soporte KML/KMZ en fiona
+    # Habilitar soporte KML en fiona
     fiona.drvsupport.supported_drivers['KML'] = 'rw'
     fiona.drvsupport.supported_drivers['LIBKML'] = 'rw'
     
-    # Leer KMZ de Palermo Norte
-    gdf_palermo_norte = gpd.read_file(ruta_palermo_norte)
+    # KMZ es un archivo ZIP que contiene un KML - extraerlo primero
+    with zipfile.ZipFile(ruta_palermo_norte, 'r') as kmz:
+        # Buscar el archivo KML dentro del KMZ
+        kml_files = [f for f in kmz.namelist() if f.endswith('.kml')]
+        if not kml_files:
+            raise FileNotFoundError(f"❌ No se encontró archivo KML dentro del KMZ: {ruta_palermo_norte}")
+        
+        # Leer el primer KML encontrado
+        with kmz.open(kml_files[0]) as kml_file:
+            gdf_palermo_norte = gpd.read_file(kml_file)
     
     # Convertir DataFrame a GeoDataFrame
     df_actualizado['geometry'] = df_actualizado.apply(lambda row: Point(row['Longitud'], row['Latitud']), axis=1)
