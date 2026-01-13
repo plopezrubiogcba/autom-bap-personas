@@ -309,16 +309,23 @@ def procesar_datos(excel_content_bytes, folder_id):
     # Spatial Join con Palermo Norte
     resultado_palermo = gpd.sjoin(puntos_gdf, gdf_palermo_norte[['geometry']], how="left", predicate="within")
     
-    # Marcar puntos dentro de Palermo Norte
-    df_actualizado['Palermo_Norte'] = resultado_palermo['index_right'].notna()
+    # Identificar puntos dentro de Palermo Norte
+    mask_palermo = resultado_palermo['index_right'].notna()
     
-    print(f"✅ Puntos dentro de Palermo Norte: {df_actualizado['Palermo_Norte'].sum()}")
+    # Inicializar comuna_calculada como None
+    df_actualizado['comuna_calculada'] = None
+    
+    # Asignar 'Palermo Norte' a los puntos que caen dentro
+    df_actualizado.loc[mask_palermo, 'comuna_calculada'] = 'Palermo Norte'
+    
+    print(f"✅ Puntos clasificados como 'Palermo Norte': {mask_palermo.sum()}")
     
     del resultado_palermo, gdf_palermo_norte
     gc.collect()
     
     # --- PASO 2: CLASIFICACIÓN DE COMUNAS (SHP) ---
-    print("📍 Ejecutando cruce espacial con comunas...")
+    # Solo clasificar los puntos que NO están en Palermo Norte
+    print("📍 Ejecutando cruce espacial con comunas para puntos restantes...")
     
     # Ruta dinámica al shapefile (assets dentro del src)
     ruta_shp = os.path.join(os.path.dirname(__file__), 'assets', 'comunas', 'comunas.shp')
@@ -332,13 +339,21 @@ def procesar_datos(excel_content_bytes, folder_id):
     if puntos_gdf.crs != gdf_comunas.crs:
         gdf_comunas = gdf_comunas.to_crs(puntos_gdf.crs)
 
-    # Spatial Join con comunas
-    resultado_sjoin = gpd.sjoin(puntos_gdf, gdf_comunas[['comuna', 'geometry']], how="left", predicate="within")
+    # Spatial Join con comunas (solo para puntos NO clasificados como Palermo Norte)
+    puntos_restantes_gdf = puntos_gdf[~mask_palermo].copy()
     
-    df_actualizado['comuna_calculada'] = resultado_sjoin['comuna']
+    if len(puntos_restantes_gdf) > 0:
+        resultado_sjoin = gpd.sjoin(puntos_restantes_gdf, gdf_comunas[['comuna', 'geometry']], how="left", predicate="within")
+        
+        # Asignar comunas solo a los puntos restantes
+        df_actualizado.loc[~mask_palermo, 'comuna_calculada'] = resultado_sjoin['comuna'].values
+        
+        del resultado_sjoin
+    
+    # Limpiar geometría
     df_actualizado = df_actualizado.drop(columns=['geometry'])
     
-    del puntos_gdf, resultado_sjoin, gdf_comunas
+    del puntos_gdf, puntos_restantes_gdf, gdf_comunas
     gc.collect()
 
     # ---------------------------------------------------------
