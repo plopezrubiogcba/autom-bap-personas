@@ -283,6 +283,39 @@ def procesar_datos(excel_content_bytes, folder_id):
     # ---------------------------------------------------------
     print("🌍 Iniciando Fase 2: Spatial Join con Comunas...")
     
+    # --- PASO 1: CLASIFICACIÓN DE PALERMO NORTE (KMZ) ---
+    print("📍 Clasificando puntos dentro de Palermo Norte...")
+    ruta_palermo_norte = os.path.join(os.path.dirname(__file__), 'assets', 'comunas', 'Palermo_Norte.kmz')
+    
+    if not os.path.exists(ruta_palermo_norte):
+        raise FileNotFoundError(f"❌ No encuentro el archivo KMZ en: {ruta_palermo_norte}")
+    
+    # Leer KMZ de Palermo Norte
+    gpd.io.file.fiona.drvsupport.supported_drivers['KML'] = 'rw'
+    gdf_palermo_norte = gpd.read_file(ruta_palermo_norte, driver='KML')
+    
+    # Convertir DataFrame a GeoDataFrame
+    df_actualizado['geometry'] = df_actualizado.apply(lambda row: Point(row['Longitud'], row['Latitud']), axis=1)
+    puntos_gdf = gpd.GeoDataFrame(df_actualizado, crs="EPSG:4326")
+    
+    # Asegurar mismo CRS
+    if puntos_gdf.crs != gdf_palermo_norte.crs:
+        gdf_palermo_norte = gdf_palermo_norte.to_crs(puntos_gdf.crs)
+    
+    # Spatial Join con Palermo Norte
+    resultado_palermo = gpd.sjoin(puntos_gdf, gdf_palermo_norte[['geometry']], how="left", predicate="within")
+    
+    # Marcar puntos dentro de Palermo Norte
+    df_actualizado['Palermo_Norte'] = resultado_palermo['index_right'].notna()
+    
+    print(f"✅ Puntos dentro de Palermo Norte: {df_actualizado['Palermo_Norte'].sum()}")
+    
+    del resultado_palermo, gdf_palermo_norte
+    gc.collect()
+    
+    # --- PASO 2: CLASIFICACIÓN DE COMUNAS (SHP) ---
+    print("📍 Ejecutando cruce espacial con comunas...")
+    
     # Ruta dinámica al shapefile (assets dentro del src)
     ruta_shp = os.path.join(os.path.dirname(__file__), 'assets', 'comunas', 'comunas.shp')
     
@@ -291,15 +324,11 @@ def procesar_datos(excel_content_bytes, folder_id):
 
     gdf_comunas = gpd.read_file(ruta_shp)
     
-    # Convertir DataFrame a GeoDataFrame
-    df_actualizado['geometry'] = df_actualizado.apply(lambda row: Point(row['Longitud'], row['Latitud']), axis=1)
-    puntos_gdf = gpd.GeoDataFrame(df_actualizado, crs="EPSG:4326")
-
-    # Spatial Join
-    print("📍 Ejecutando cruce espacial...")
+    # Asegurar mismo CRS
     if puntos_gdf.crs != gdf_comunas.crs:
         gdf_comunas = gdf_comunas.to_crs(puntos_gdf.crs)
 
+    # Spatial Join con comunas
     resultado_sjoin = gpd.sjoin(puntos_gdf, gdf_comunas[['comuna', 'geometry']], how="left", predicate="within")
     
     df_actualizado['comuna_calculada'] = resultado_sjoin['comuna']
