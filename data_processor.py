@@ -324,10 +324,10 @@ def procesar_datos(excel_content_bytes, folder_id):
     # Inicializar comuna_calculada como None
     df_actualizado['comuna_calculada'] = None
     
-    # Asignar 'Palermo Norte' a los puntos que caen dentro
-    df_actualizado.loc[mask_palermo, 'comuna_calculada'] = 'Palermo Norte'
+    # Asignar 14.5 (código para Palermo Norte) a los puntos que caen dentro
+    df_actualizado.loc[mask_palermo, 'comuna_calculada'] = 14.5
     
-    print(f"✅ Puntos clasificados como 'Palermo Norte': {mask_palermo.sum()}")
+    print(f"✅ Puntos clasificados como Palermo Norte (14.5): {mask_palermo.sum()}")
     
     del resultado_palermo, gdf_palermo_norte
     gc.collect()
@@ -362,8 +362,7 @@ def procesar_datos(excel_content_bytes, folder_id):
     # Limpiar geometría
     df_actualizado = df_actualizado.drop(columns=['geometry'])
     
-    # Convertir comuna_calculada a string para uniformidad (mezcla de 'Palermo Norte' y números)
-    df_actualizado['comuna_calculada'] = df_actualizado['comuna_calculada'].astype(str)
+    # comuna_calculada queda como float (comunas 1.0-15.0, Palermo Norte es 14.5)
     
     del puntos_gdf, puntos_restantes_gdf, gdf_comunas
     gc.collect()
