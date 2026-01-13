@@ -353,6 +353,9 @@ def procesar_datos(excel_content_bytes, folder_id):
     # Limpiar geometría
     df_actualizado = df_actualizado.drop(columns=['geometry'])
     
+    # Convertir comuna_calculada a string para uniformidad (mezcla de 'Palermo Norte' y números)
+    df_actualizado['comuna_calculada'] = df_actualizado['comuna_calculada'].astype(str)
+    
     del puntos_gdf, puntos_restantes_gdf, gdf_comunas
     gc.collect()
 
