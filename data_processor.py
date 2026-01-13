@@ -12,6 +12,7 @@ from rapidfuzz import process, fuzz
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
+import fiona
 
 # ==========================================
 # CONFIGURACIÓN Y UTILIDADES DE GOOGLE (DRIVE & BIGQUERY)
@@ -290,9 +291,12 @@ def procesar_datos(excel_content_bytes, folder_id):
     if not os.path.exists(ruta_palermo_norte):
         raise FileNotFoundError(f"❌ No encuentro el archivo KMZ en: {ruta_palermo_norte}")
     
+    # Habilitar soporte KML/KMZ en fiona
+    fiona.drvsupport.supported_drivers['KML'] = 'rw'
+    fiona.drvsupport.supported_drivers['LIBKML'] = 'rw'
+    
     # Leer KMZ de Palermo Norte
-    gpd.io.file.fiona.drvsupport.supported_drivers['KML'] = 'rw'
-    gdf_palermo_norte = gpd.read_file(ruta_palermo_norte, driver='KML')
+    gdf_palermo_norte = gpd.read_file(ruta_palermo_norte)
     
     # Convertir DataFrame a GeoDataFrame
     df_actualizado['geometry'] = df_actualizado.apply(lambda row: Point(row['Longitud'], row['Latitud']), axis=1)
