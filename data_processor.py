@@ -400,57 +400,94 @@ def procesar_datos(excel_content_bytes, folder_id):
     df_actualizado['contacto'] = niveles.apply(lambda x: x[0])
     df_actualizado['brinda_datos'] = niveles.apply(lambda x: x[1])
 
-    # === INICIO BLOQUE EVOLUCIÓN DNI (Corregido: Semanal + Duplicados) ===
-    print("🧠 Calculando evolución histórica de DNI (Python) - Lógica Semanal...")
+    # === INICIO BLOQUE EVOLUCIÓN DNI (Per-Comuna Logic, keep='last') ===
+    print("🧠 Calculando evolución histórica de DNI (Python) - Lógica Por Comuna...")
     
     # 1. Aseguramos el orden cronológico
-    df_actualizado.sort_values(by=['DNI_Categorizado', 'Fecha Inicio'], ascending=[True, True], inplace=True)
+    df_actualizado.sort_values(by=['Fecha Inicio', 'DNI_Categorizado'], ascending=[True, True], inplace=True)
     
-    # 2. Generamos columna de Semana (Año-Semana) para detectar duplicados intra-semanales
-    # Usamos strftime('%Y-%U') para agrupar por semana.
-    df_actualizado['semana_temp'] = df_actualizado['Fecha Inicio'].apply(lambda x: x.strftime('%Y-%U') if pd.notnull(x) else 'SinFecha')
+    # 2. Generamos columna de Semana para detectar duplicados intra-semanales
+    df_actualizado['semana_temp'] = df_actualizado['Fecha Inicio'].apply(
+        lambda x: x.strftime('%Y-%U') if pd.notnull(x) else 'SinFecha'
+    )
 
     # 3. Definimos Anónimos
     anonimos = ['NO BRINDO/NO VISIBLE', 'NO BRINDO', 'NO VISIBLE', 'S/D']
-    
-    # 4. Detectamos duplicados semanales (Solo para NO anónimos)
-    # Si es anónimo, NUNCA es duplicado (cada registro cuenta), pero será 'No clasificable'
-    # Si NO es anónimo, el primero de la semana manda para Evolución, los siguientes son 'Duplicado'.
-    
     mask_anonimos = df_actualizado['DNI_Categorizado'].isin(anonimos)
     
-    # Marcamos duplicados considerando subset DNI+Semana, keep='first'. 
-    # Todo lo que sea true en duplicated() y NO sea anónimo -> Es duplicado de la semana.
-    duplicados_semanales = df_actualizado.duplicated(subset=['DNI_Categorizado', 'semana_temp'], keep='first')
-    mask_duplicados = (~mask_anonimos) & (duplicados_semanales)
-
-    # 5. Calculamos historial SOLO sobre los registros "Valid" (No Anonimos y No Duplicados)
-    # Los duplicados NO participan en la cadena de historia (según instrucción "eliminar... recien buscar")
+    # 4. Detectamos y ELIMINAMOS duplicados semanales usando keep='last'
+    # Solo mantenemos el ÚLTIMO registro de cada DNI en cada semana
+    duplicados_semanales = df_actualizado.duplicated(
+        subset=['DNI_Categorizado', 'semana_temp'], 
+        keep='last'
+    )
     
-    # Creamos un subset temporal con los registros únicos por semana
-    df_validos = df_actualizado[ (~mask_anonimos) & (~mask_duplicados) ].copy()
+    # Eliminamos duplicados del DataFrame (excepto anónimos, cada uno cuenta)
+    df_sin_duplicados = df_actualizado[~duplicados_semanales | mask_anonimos].copy()
     
-    # Calculamos shift sobre este subset limpio para ver cambios de comuna entre semanas
-    df_validos['comuna_prev'] = df_validos.groupby('DNI_Categorizado')['comuna_calculada'].shift(1)
+    print(f"📊 Eliminados {duplicados_semanales.sum()} registros duplicados semanales (keep='last')")
     
-    # Mapeamos 'comuna_prev' de vuelta al df original usando el index
-    df_actualizado['comuna_prev'] = df_validos['comuna_prev']
+    # 5. Clasificación POR COMUNA (no global)
+    # Para cada registro válido (no anónimo), determinar si es Nuevo/Recurrente/Migratorio
+    # respecto a la COMUNA ACTUAL
     
-    # 6. Clasificación Final con np.select
-    conditions = [
-        mask_anonimos,                                      # 1. Anónimo -> No clasificable
-        mask_duplicados,                                    # 2. Duplicado Semanal -> Duplicado
-        df_actualizado['comuna_prev'].isna(),               # 3. Valid (Sin historia previa) -> Nuevo
-        df_actualizado['comuna_prev'] == df_actualizado['comuna_calculada'] # 4. Valid (Misma comuna) -> Recurrente
-    ]
+    def clasificar_dni_por_comuna(row, historial_completo):
+        """
+        Clasifica un DNI según su historial en la comuna actual.
+        
+        - Nuevo: Primera vez que aparece en esta comuna
+        - Recurrente: Ya estuvo aquí y su última aparición global fue en esta misma comuna
+        - Migratorio: Ya estuvo aquí pero su última aparición global fue en otra comuna
+        """
+        dni = row['DNI_Categorizado']
+        comuna_actual = row['comuna_calculada']
+        fecha_actual = row['Fecha Inicio']
+        
+        # Anónimos siempre son "No clasificable"
+        if dni in anonimos:
+            return 'No clasificable'
+        
+        # Obtener historial previo del DNI (registros ANTES de este)
+        historial_dni = historial_completo[
+            (historial_completo['DNI_Categorizado'] == dni) & 
+            (historial_completo['Fecha Inicio'] < fecha_actual)
+        ]
+        
+        if len(historial_dni) == 0:
+            # Primera aparición global del DNI -> NUEVO en esta comuna
+            return 'Nuevos'
+        
+        # ¿Alguna vez estuvo en esta comuna antes?
+        apariciones_en_comuna = historial_dni[
+            historial_dni['comuna_calculada'] == comuna_actual
+        ]
+        
+        if len(apariciones_en_comuna) == 0:
+            # Primera vez en ESTA comuna (aunque tiene historial en otras) -> NUEVO
+            return 'Nuevos'
+        
+        # Ya estuvo aquí. ¿Cuál fue su última comuna registrada?
+        ultima_comuna = historial_dni.iloc[-1]['comuna_calculada']
+        
+        if ultima_comuna == comuna_actual:
+            # Su última aparición fue en esta misma comuna -> RECURRENTE
+            return 'Recurrentes'
+        else:
+            # Su última aparición fue en otra comuna -> MIGRATORIO
+            return 'Migratorios'
     
-    choices = ['No clasificable', 'Duplicado', 'Nuevos', 'Recurrentes']
-    
-    # Default -> Migratorios (Valid con historia distinta)
-    df_actualizado['Tipo_Evolucion'] = np.select(conditions, choices, default='Migratorios')
+    # Aplicar clasificación a cada fila
+    print("🔄 Clasificando DNIs por comuna (esto puede tomar unos segundos)...")
+    df_sin_duplicados['Tipo_Evolucion'] = df_sin_duplicados.apply(
+        lambda row: clasificar_dni_por_comuna(row, df_sin_duplicados),
+        axis=1
+    )
     
     # Limpieza
-    df_actualizado.drop(columns=['semana_temp', 'comuna_prev'], inplace=True)
+    df_sin_duplicados.drop(columns=['semana_temp'], inplace=True)
+    
+    # Reasignar el DataFrame procesado
+    df_actualizado = df_sin_duplicados
     # === FIN BLOQUE EVOLUCIÓN DNI ===
 
     # ---------------------------------------------------------
