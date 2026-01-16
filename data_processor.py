@@ -361,9 +361,8 @@ def procesar_datos(excel_content_bytes, folder_id):
     gc.collect()
     
     # PASO 3: CLASIFICACIÓN DE COMUNAS (SHP) - TERCERO
-    # Solo clasificar los puntos que NO están en zonas especiales
-    mask_zonas_especiales = mask_palermo | mask_anillo
-    print("📍 Ejecutando cruce espacial con comunas para puntos restantes...")
+    # IMPORTANTE: Solo clasificar puntos que AÚN NO tienen comuna asignada
+    print("📍 PASO 3: Ejecutando cruce espacial con comunas para puntos sin clasificar...")
     
     # Ruta dinámica al shapefile (assets dentro del src)
     ruta_shp = os.path.join(os.path.dirname(__file__), 'assets', 'comunas', 'comunas.shp')
@@ -377,23 +376,33 @@ def procesar_datos(excel_content_bytes, folder_id):
     if puntos_gdf.crs != gdf_comunas.crs:
         gdf_comunas = gdf_comunas.to_crs(puntos_gdf.crs)
 
-    # Spatial Join con comunas (solo para puntos NO clasificados como zonas especiales)
-    puntos_restantes_gdf = puntos_gdf[~mask_zonas_especiales].copy()
+    # CRÍTICO: Solo procesar puntos donde comuna_calculada es None
+    # Esto preserva las clasificaciones de Palermo Norte (14.5) y Anillo Digital (2.5)
+    mask_sin_clasificar = df_actualizado['comuna_calculada'].isna()
+    puntos_sin_clasificar_gdf = puntos_gdf[mask_sin_clasificar].copy()
     
-    if len(puntos_restantes_gdf) > 0:
-        resultado_sjoin = gpd.sjoin(puntos_restantes_gdf, gdf_comunas[['comuna', 'geometry']], how="left", predicate="within")
+    print(f"📊 Puntos sin clasificar que irán al SHP: {mask_sin_clasificar.sum()}")
+    
+    if len(puntos_sin_clasificar_gdf) > 0:
+        resultado_sjoin = gpd.sjoin(puntos_sin_clasificar_gdf, gdf_comunas[['comuna', 'geometry']], how="left", predicate="within")
         
-        # Asignar comunas solo a los puntos restantes
-        df_actualizado.loc[~mask_zonas_especiales, 'comuna_calculada'] = resultado_sjoin['comuna'].values
+        # Asignar comunas SOLO a los puntos que no tenían clasificación
+        df_actualizado.loc[mask_sin_clasificar, 'comuna_calculada'] = resultado_sjoin['comuna'].values
         
         del resultado_sjoin
     
     # Limpiar geometría
     df_actualizado = df_actualizado.drop(columns=['geometry'])
     
+    # Verificar distribución final
+    print(f"✅ Distribución final de comuna_calculada:")
+    print(f"   - Palermo Norte (14.5): {(df_actualizado['comuna_calculada'] == 14.5).sum()}")
+    print(f"   - Anillo Digital C2 (2.5): {(df_actualizado['comuna_calculada'] == 2.5).sum()}")
+    print(f"   - Comunas regulares: {df_actualizado['comuna_calculada'].between(1, 15, inclusive='both').sum()}")
+    
     # comuna_calculada queda como float (comunas 1.0-15.0, zonas especiales: 2.5, 14.5)
     
-    del puntos_gdf, puntos_restantes_gdf, gdf_comunas
+    del puntos_gdf, puntos_sin_clasificar_gdf, gdf_comunas
     gc.collect()
 
     # ---------------------------------------------------------
