@@ -73,8 +73,8 @@ def calculate_dni_evolution(df_base, target_comuna_id=2):
         # Variaciones comunes
         if target_comuna_id == 2:
             return sx in {"2", "2.0", "COMUNA2"}
-        elif target_comuna_id == 14:
-            return sx in {"14", "14.0", "COMUNA14"}
+        elif target_comuna_id == 14.5:
+            return sx in {"Palermo Norte"}
         else:
             # Fallback generico
             return sx in {str(target_comuna_id), f"{target_comuna_id}.0", f"COMUNA{target_comuna_id}"}
