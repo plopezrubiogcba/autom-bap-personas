@@ -285,31 +285,62 @@ def procesar_datos(excel_content_bytes, folder_id):
     # ---------------------------------------------------------
     print("🌍 Iniciando Fase 2: Spatial Join con Comunas...")
     
-    # --- PASO 1: CLASIFICACIÓN DE PALERMO NORTE (KMZ) ---
+    # --- PASO 1: CLASIFICACIÓN DE ZONAS ESPECIALES (KMZ) ---
+    # Inicializar comuna_calculada como None
+    df_actualizado['comuna_calculada'] = None
+    
+    # Habilitar soporte KML en fiona
+    fiona.drvsupport.supported_drivers['KML'] = 'rw'
+    fiona.drvsupport.supported_drivers['LIBKML'] = 'rw'
+    
+    # Convertir DataFrame a GeoDataFrame (una sola vez)
+    df_actualizado['geometry'] = df_actualizado.apply(lambda row: Point(row['Longitud'], row['Latitud']), axis=1)
+    puntos_gdf = gpd.GeoDataFrame(df_actualizado, crs="EPSG:4326")
+    
+    # 1.A - Anillo Digital C2 (Comuna 2.5)
+    print("📍 Clasificando puntos dentro de Anillo Digital C2...")
+    ruta_anillo_c2 = os.path.join(os.path.dirname(__file__), 'assets', 'comunas', 'anillo_digital_c2.kmz')
+    
+    if os.path.exists(ruta_anillo_c2):
+        with zipfile.ZipFile(ruta_anillo_c2, 'r') as kmz:
+            kml_files = [f for f in kmz.namelist() if f.endswith('.kml')]
+            if kml_files:
+                with kmz.open(kml_files[0]) as kml_file:
+                    gdf_anillo_c2 = gpd.read_file(kml_file)
+                
+                # Asegurar mismo CRS
+                if puntos_gdf.crs != gdf_anillo_c2.crs:
+                    gdf_anillo_c2 = gdf_anillo_c2.to_crs(puntos_gdf.crs)
+                
+                # Spatial Join
+                resultado_anillo = gpd.sjoin(puntos_gdf, gdf_anillo_c2[['geometry']], how="left", predicate="within")
+                mask_anillo = resultado_anillo['index_right'].notna()
+                
+                # Asignar 2.5 (código para Anillo Digital C2)
+                df_actualizado.loc[mask_anillo, 'comuna_calculada'] = 2.5
+                print(f"✅ Puntos clasificados como Anillo Digital C2 (2.5): {mask_anillo.sum()}")
+                
+                del resultado_anillo, gdf_anillo_c2
+    else:
+        print(f"⚠️ Archivo {ruta_anillo_c2} no encontrado - se omite Anillo Digital C2")
+        mask_anillo = pd.Series([False] * len(df_actualizado))
+    
+    gc.collect()
+    
+    # 1.B - Palermo Norte (Comuna 14.5)
     print("📍 Clasificando puntos dentro de Palermo Norte...")
     ruta_palermo_norte = os.path.join(os.path.dirname(__file__), 'assets', 'comunas', 'Palermo_Norte.kmz')
     
     if not os.path.exists(ruta_palermo_norte):
         raise FileNotFoundError(f"❌ No encuentro el archivo KMZ en: {ruta_palermo_norte}")
     
-    # Habilitar soporte KML en fiona
-    fiona.drvsupport.supported_drivers['KML'] = 'rw'
-    fiona.drvsupport.supported_drivers['LIBKML'] = 'rw'
-    
-    # KMZ es un archivo ZIP que contiene un KML - extraerlo primero
     with zipfile.ZipFile(ruta_palermo_norte, 'r') as kmz:
-        # Buscar el archivo KML dentro del KMZ
         kml_files = [f for f in kmz.namelist() if f.endswith('.kml')]
         if not kml_files:
             raise FileNotFoundError(f"❌ No se encontró archivo KML dentro del KMZ: {ruta_palermo_norte}")
         
-        # Leer el primer KML encontrado
         with kmz.open(kml_files[0]) as kml_file:
             gdf_palermo_norte = gpd.read_file(kml_file)
-    
-    # Convertir DataFrame a GeoDataFrame
-    df_actualizado['geometry'] = df_actualizado.apply(lambda row: Point(row['Longitud'], row['Latitud']), axis=1)
-    puntos_gdf = gpd.GeoDataFrame(df_actualizado, crs="EPSG:4326")
     
     # Asegurar mismo CRS
     if puntos_gdf.crs != gdf_palermo_norte.crs:
@@ -321,9 +352,6 @@ def procesar_datos(excel_content_bytes, folder_id):
     # Identificar puntos dentro de Palermo Norte
     mask_palermo = resultado_palermo['index_right'].notna()
     
-    # Inicializar comuna_calculada como None
-    df_actualizado['comuna_calculada'] = None
-    
     # Asignar 14.5 (código para Palermo Norte) a los puntos que caen dentro
     df_actualizado.loc[mask_palermo, 'comuna_calculada'] = 14.5
     
@@ -333,7 +361,8 @@ def procesar_datos(excel_content_bytes, folder_id):
     gc.collect()
     
     # --- PASO 2: CLASIFICACIÓN DE COMUNAS (SHP) ---
-    # Solo clasificar los puntos que NO están en Palermo Norte
+    # Solo clasificar los puntos que NO están en zonas especiales
+    mask_zonas_especiales = mask_anillo | mask_palermo
     print("📍 Ejecutando cruce espacial con comunas para puntos restantes...")
     
     # Ruta dinámica al shapefile (assets dentro del src)
@@ -348,21 +377,21 @@ def procesar_datos(excel_content_bytes, folder_id):
     if puntos_gdf.crs != gdf_comunas.crs:
         gdf_comunas = gdf_comunas.to_crs(puntos_gdf.crs)
 
-    # Spatial Join con comunas (solo para puntos NO clasificados como Palermo Norte)
-    puntos_restantes_gdf = puntos_gdf[~mask_palermo].copy()
+    # Spatial Join con comunas (solo para puntos NO clasificados como zonas especiales)
+    puntos_restantes_gdf = puntos_gdf[~mask_zonas_especiales].copy()
     
     if len(puntos_restantes_gdf) > 0:
         resultado_sjoin = gpd.sjoin(puntos_restantes_gdf, gdf_comunas[['comuna', 'geometry']], how="left", predicate="within")
         
         # Asignar comunas solo a los puntos restantes
-        df_actualizado.loc[~mask_palermo, 'comuna_calculada'] = resultado_sjoin['comuna'].values
+        df_actualizado.loc[~mask_zonas_especiales, 'comuna_calculada'] = resultado_sjoin['comuna'].values
         
         del resultado_sjoin
     
     # Limpiar geometría
     df_actualizado = df_actualizado.drop(columns=['geometry'])
     
-    # comuna_calculada queda como float (comunas 1.0-15.0, Palermo Norte es 14.5)
+    # comuna_calculada queda como float (comunas 1.0-15.0, zonas especiales: 2.5, 14.5)
     
     del puntos_gdf, puntos_restantes_gdf, gdf_comunas
     gc.collect()
@@ -400,8 +429,8 @@ def procesar_datos(excel_content_bytes, folder_id):
     df_actualizado['contacto'] = niveles.apply(lambda x: x[0])
     df_actualizado['brinda_datos'] = niveles.apply(lambda x: x[1])
 
-    # === INICIO BLOQUE EVOLUCIÓN DNI (Matching dashboardgenerator exact logic) ===
-    print("🧠 Calculando evolución histórica de DNI (Python) - Lógica dashboardgenerator...")
+    # === INICIO BLOQUE EVOLUCIÓN DNI (Exact dashboardgenerator replication) ===
+    print("🧠 Calculando evolución histórica de DNI (Python) - Lógica dashboardgenerator exacta...")
     
     # 1. Ordenar por fecha (cronológico)
     df_actualizado = df_actualizado.sort_values('Fecha Inicio').reset_index(drop=True)
@@ -412,9 +441,7 @@ def procesar_datos(excel_content_bytes, folder_id):
     # 3. Definir anónimos (no se clasifican)
     anonimos = ['NO BRINDO/NO VISIBLE', 'NO BRINDO', 'NO VISIBLE', 'S/D']
     
-    # 4. CRÍTICO: drop_duplicates por Semana + DNI SOLAMENTE (NO por comuna)
-    # Esto asegura que un DNI solo aparezca UNA VEZ por semana GLOBALMENTE
-    # Si aparece en 2 comunas la misma semana, solo queda el ÚLTIMO registro (keep='last')
+    # 4. Drop duplicates por Semana + DNI SOLAMENTE (NO por comuna)
     print("🔄 Eliminando duplicados semanales (Semana + DNI)...")
     
     # Guardar anónimos aparte (no se deduplicean)
@@ -423,52 +450,70 @@ def procesar_datos(excel_content_bytes, folder_id):
     df_no_anonimos = df_actualizado[~mask_anonimos].copy()
     
     # Eliminar duplicados SOLO en no-anónimos
-    df_dedup = df_no_anonimos.drop_duplicates(
+    df_sem = df_no_anonimos.drop_duplicates(
         subset=['Semana', 'DNI_Categorizado'], 
         keep='last'  # Mantener el ÚLTIMO registro de cada DNI por semana
     ).copy()
     
-    registros_eliminados = len(df_no_anonimos) - len(df_dedup)
+    registros_eliminados = len(df_no_anonimos) - len(df_sem)
     print(f"📊 Eliminados {registros_eliminados} registros duplicados (keep='last')")
     
-    # 5. Clasificación vectorizada (O(n log n))
-    print("🔄 Clasificando DNIs por comuna...")
+    # 5. CLASIFICACIÓN ITERATIVA POR SEMANA (matching dashboardgenerator)
+    print("🔄 Clasificando DNIs semana por semana...")
     
-    # Ordenar por DNI y Fecha para calcular historial
-    df_dedup = df_dedup.sort_values(['DNI_Categorizado', 'Fecha Inicio']).reset_index(drop=True)
+    semanas = sorted(df_sem['Semana'].unique())
+    dni_last_comuna = {}  # Diccionario: DNI -> última comuna vista
+    dni_seen = set()      # Set de todos los DNIs que hemos visto
     
-    # Calcular la ÚLTIMA COMUNA registrada para cada DNI (usando shift)
-    df_dedup['ultima_comuna'] = df_dedup.groupby('DNI_Categorizado')['comuna_calculada'].shift(1)
+    # Lista para almacenar resultados de clasificación
+    clasificaciones = []
     
-    # Marcar si es la primera vez que vemos este DNI (globalmente)
-    df_dedup['es_primera_vez'] = df_dedup['ultima_comuna'].isna()
+    for semana in semanas:
+        rows_sem = df_sem[df_sem['Semana'] == semana]
+        
+        # Para cada registro de esta semana, clasificarlo
+        for idx, row in rows_sem.iterrows():
+            dni = row['DNI_Categorizado']
+            comuna_actual = row['comuna_calculada']
+            
+            prior_comuna = dni_last_comuna.get(dni, None)
+            
+            # LÓGICA DE CLASIFICACIÓN (exacta de dashboardgenerator):
+            if prior_comuna is None and dni not in dni_seen:
+                # Nuevo: primera vez que vemos este DNI
+                clasificacion = 'Nuevos'
+            else:
+                # Ya fue visto
+                if prior_comuna is not None and prior_comuna == comuna_actual:
+                    # Recurrente: su última comuna era esta misma
+                    clasificacion = 'Recurrentes'
+                else:
+                    # Migratorio: viene de otra comuna (o caso borde)
+                    clasificacion = 'Migratorios'
+            
+            clasificaciones.append((idx, clasificacion))
+        
+        # CRÍTICO: Actualizar historial para TODOS los DNIs de esta semana
+        # (no solo los de la comuna que estamos analizando)
+        for idx, row in rows_sem.iterrows():
+            dni_last_comuna[row['DNI_Categorizado']] = row['comuna_calculada']
+            dni_seen.add(row['DNI_Categorizado'])
     
-    # CLASIFICACIÓN (matching dashboardgenerator logic):
-    # - Nuevo: primera vez que vemos el DNI (es_primera_vez == True)
-    # - Recurrente: NO es primera vez Y ultima_comuna == comuna_actual
-    # - Migratorio: NO es primera vez Y ultima_comuna != comuna_actual
+    # 6. Aplicar clasificaciones al DataFrame
+    for idx, clasificacion in clasificaciones:
+        df_sem.at[idx, 'Tipo_Evolucion'] = clasificacion
     
-    conditions = [
-        df_dedup['es_primera_vez'],  # Primera vez global
-        df_dedup['ultima_comuna'] == df_dedup['comuna_calculada'],  # Regresa a misma comuna
-        df_dedup['ultima_comuna'] != df_dedup['comuna_calculada']   # Viene de otra comuna
-    ]
-    
-    choices = ['Nuevos', 'Recurrentes', 'Migratorios']
-    
-    df_dedup['Tipo_Evolucion'] = np.select(conditions, choices, default='Nuevos')
-    
-    # 6. Anónimos siempre son "No clasificable"
+    # 7. Anónimos siempre son "No clasificable"
     df_anonimos['Tipo_Evolucion'] = 'No clasificable'
     
-    # 7. Recombinar anónimos y clasificados
-    df_actualizado = pd.concat([df_dedup, df_anonimos], ignore_index=True)
+    # 8. Recombinar anónimos y clasificados
+    df_actualizado = pd.concat([df_sem, df_anonimos], ignore_index=True)
     df_actualizado = df_actualizado.sort_values('Fecha Inicio').reset_index(drop=True)
     
     # Limpieza de columnas temporales
-    df_actualizado.drop(columns=['Semana', 'ultima_comuna', 'es_primera_vez'], inplace=True, errors='ignore')
+    df_actualizado.drop(columns=['Semana'], inplace=True, errors='ignore')
     
-    print(f"✅ Clasificación completada - Lógica exacta de dashboardgenerator aplicada a todas las comunas")
+    print(f"✅ Clasificación completada - Lógica EXACTA de dashboardgenerator replicada")
     # === FIN BLOQUE EVOLUCIÓN DNI ===
 
     # ---------------------------------------------------------
