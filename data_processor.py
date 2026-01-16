@@ -297,38 +297,8 @@ def procesar_datos(excel_content_bytes, folder_id):
     df_actualizado['geometry'] = df_actualizado.apply(lambda row: Point(row['Longitud'], row['Latitud']), axis=1)
     puntos_gdf = gpd.GeoDataFrame(df_actualizado, crs="EPSG:4326")
     
-    # 1.A - Anillo Digital C2 (Comuna 2.5)
-    print("📍 Clasificando puntos dentro de Anillo Digital C2...")
-    ruta_anillo_c2 = os.path.join(os.path.dirname(__file__), 'assets', 'comunas', 'anillo_digital_c2.kmz')
-    
-    if os.path.exists(ruta_anillo_c2):
-        with zipfile.ZipFile(ruta_anillo_c2, 'r') as kmz:
-            kml_files = [f for f in kmz.namelist() if f.endswith('.kml')]
-            if kml_files:
-                with kmz.open(kml_files[0]) as kml_file:
-                    gdf_anillo_c2 = gpd.read_file(kml_file)
-                
-                # Asegurar mismo CRS
-                if puntos_gdf.crs != gdf_anillo_c2.crs:
-                    gdf_anillo_c2 = gdf_anillo_c2.to_crs(puntos_gdf.crs)
-                
-                # Spatial Join
-                resultado_anillo = gpd.sjoin(puntos_gdf, gdf_anillo_c2[['geometry']], how="left", predicate="within")
-                mask_anillo = resultado_anillo['index_right'].notna()
-                
-                # Asignar 2.5 (código para Anillo Digital C2)
-                df_actualizado.loc[mask_anillo, 'comuna_calculada'] = 2.5
-                print(f"✅ Puntos clasificados como Anillo Digital C2 (2.5): {mask_anillo.sum()}")
-                
-                del resultado_anillo, gdf_anillo_c2
-    else:
-        print(f"⚠️ Archivo {ruta_anillo_c2} no encontrado - se omite Anillo Digital C2")
-        mask_anillo = pd.Series([False] * len(df_actualizado))
-    
-    gc.collect()
-    
-    # 1.B - Palermo Norte (Comuna 14.5)
-    print("📍 Clasificando puntos dentro de Palermo Norte...")
+    # PASO 1: Palermo Norte (Comuna 14.5) - PRIMERO
+    print("📍 PASO 1: Clasificando puntos dentro de Palermo Norte...")
     ruta_palermo_norte = os.path.join(os.path.dirname(__file__), 'assets', 'comunas', 'Palermo_Norte.kmz')
     
     if not os.path.exists(ruta_palermo_norte):
@@ -360,9 +330,39 @@ def procesar_datos(excel_content_bytes, folder_id):
     del resultado_palermo, gdf_palermo_norte
     gc.collect()
     
-    # --- PASO 2: CLASIFICACIÓN DE COMUNAS (SHP) ---
+    # PASO 2: Anillo Digital C2 (Comuna 2.5) - SEGUNDO
+    print("📍 PASO 2: Clasificando puntos dentro de Anillo Digital C2...")
+    ruta_anillo_c2 = os.path.join(os.path.dirname(__file__), 'assets', 'comunas', 'anillo_digital_c2.kmz')
+    
+    if os.path.exists(ruta_anillo_c2):
+        with zipfile.ZipFile(ruta_anillo_c2, 'r') as kmz:
+            kml_files = [f for f in kmz.namelist() if f.endswith('.kml')]
+            if kml_files:
+                with kmz.open(kml_files[0]) as kml_file:
+                    gdf_anillo_c2 = gpd.read_file(kml_file)
+                
+                # Asegurar mismo CRS
+                if puntos_gdf.crs != gdf_anillo_c2.crs:
+                    gdf_anillo_c2 = gdf_anillo_c2.to_crs(puntos_gdf.crs)
+                
+                # Spatial Join
+                resultado_anillo = gpd.sjoin(puntos_gdf, gdf_anillo_c2[['geometry']], how="left", predicate="within")
+                mask_anillo = resultado_anillo['index_right'].notna()
+                
+                # Asignar 2.5 (código para Anillo Digital C2)
+                df_actualizado.loc[mask_anillo, 'comuna_calculada'] = 2.5
+                print(f"✅ Puntos clasificados como Anillo Digital C2 (2.5): {mask_anillo.sum()}")
+                
+                del resultado_anillo, gdf_anillo_c2
+    else:
+        print(f"⚠️ Archivo {ruta_anillo_c2} no encontrado - se omite Anillo Digital C2")
+        mask_anillo = pd.Series([False] * len(df_actualizado))
+    
+    gc.collect()
+    
+    # PASO 3: CLASIFICACIÓN DE COMUNAS (SHP) - TERCERO
     # Solo clasificar los puntos que NO están en zonas especiales
-    mask_zonas_especiales = mask_anillo | mask_palermo
+    mask_zonas_especiales = mask_palermo | mask_anillo
     print("📍 Ejecutando cruce espacial con comunas para puntos restantes...")
     
     # Ruta dinámica al shapefile (assets dentro del src)
