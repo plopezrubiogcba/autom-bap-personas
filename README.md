@@ -59,7 +59,7 @@ graph TD
 ### Clasificación de Contacto
 El sistema aplica reglas estrictas para determinar el resultado de una intervención:
 *   **Se contacta**: Interacción efectiva con la persona.
-*   **No se contacta**: La persona rechaza o no se logra establecer vínculo.
+*   **No se contacta**: No se logra establecer vínculo.
 *   **Sin cubrir**: Casos pendientes o cancelados operativamente.
 
 ### Evolución de Población (Comuna 2)
